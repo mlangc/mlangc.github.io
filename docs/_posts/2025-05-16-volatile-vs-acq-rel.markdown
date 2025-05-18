@@ -101,8 +101,6 @@ void threadB() {
 }
 ```
 
-
-
 Note that this is actually identical to the [ARM developer documentation for the LDAR and STLR instructions](https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions).
 X86 has a relatively strong ordering model by default (see [Chapter 10.2 in Volume 3 in the Combined Volume Set of Intel® 64 and IA-32 Architectures Software Developer’s Manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)),
 which means that loads and stores always have acquire-release semantics.
