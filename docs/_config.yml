@@ -27,9 +27,9 @@ url: "" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  mlangc
 
 # Build settings
+
 remote_theme: "jekyll/minima@1e8a445"
 plugins:
-  - jekyll-feed
   - jekyll-remote-theme
 
 # Exclude from processing.
