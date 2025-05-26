@@ -20,7 +20,7 @@ Before going into details, I want to avoid a potential source of confusion from 
 see the usage of [getAcquire](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#getAcquire()) and [setRelease](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#setRelease(int))
 in Java code, is that they are implied when acquiring/releasing locks, volatile reads/writes and by 
 most operations available on the various atomic classes. The examples below would therefore also work if a 
-volatile flag, or plain [get](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#get()) and [set](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#set(int)) was used.
+volatile flag, or atomic [get](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#get()) and [set](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#set(int)) was used.
 
 Having said that, let's check the documentation: According to the [Javadocs](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/VarHandle.html#getAcquire(java.lang.Object...)),
 `getAcquire` "returns the value of a variable, and ensures that subsequent loads and stores are not reordered before this access." 
