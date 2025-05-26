@@ -17,19 +17,17 @@ the difference between these two concepts for you. It certainly did so for me.
 
 ### getAcquire and setRelease
 Before going into details, I want to avoid a potential source of confusion from the start. The reason why you don't typically
-see the usage of [getAcquire](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#getAcquire())
-and [setRelease](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#setRelease(int))
-in Java code, is that they are implied by locks, object monitors, volatile reads 
-and writes and by most operations available on the various atomic classes. The examples below would therefore also work if a 
-volatile flag, or plain [get](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#get()) 
-and [set](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#set(int)) was used.
+see the usage of [getAcquire](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#getAcquire()) and [setRelease](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#setRelease(int))
+in Java code, is that they are implied when acquiring/releasing locks, volatile reads/writes and by 
+most operations available on the various atomic classes. The examples below would therefore also work if a 
+volatile flag, or plain [get](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#get()) and [set](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/atomic/AtomicInteger.html#set(int)) was used.
 
 Having said that, let's check the documentation: According to the [Javadocs](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/VarHandle.html#getAcquire(java.lang.Object...)),
 `getAcquire` "returns the value of a variable, and ensures that subsequent loads and stores are not reordered before this access." 
 `setRelase` "sets the value of a variable to the newValue, and ensures that prior loads and stores are not reordered after this access."
 
 Thus, `getAcquire` acts like a one-way fence for all loads and stores that follow. I like to imagine it having thorns pointing
-down that prevent operations from being reordered above it.
+down that prevent operations from being reordered before it.
 
 ![getAcquire](/assets/drawings/2025-05-16-get-acquire.drawio.png)
 *This diagram shows getAcquire with thorns pointing downward. Operations can be reordered after it, but not before.*
@@ -118,7 +116,8 @@ void threadA() {
 }
 
 void threadB() {
-  if (published.getAcquire() instanceof HasNonFinalFields obj) {
+  HasNonFinalField obj;  
+  if ((obj = published.getAcquire()) != null) {
     // Can't fail, since a happens-before-relationship has been established
     // with (1)
     assert obj.nonFinalField > 0;
@@ -284,7 +283,7 @@ class PetersonLock {
         memoryOrdering.set(turn, oIdx); // (2)
 
         while (memoryOrdering.get(interested, oIdx) == 1 
-               && memoryOrdering.get(turn) != myIdx) {
+               && memoryOrdering.get(turn) != myIdx) { // (3)
             Thread.onSpinWait();
         }
     }
