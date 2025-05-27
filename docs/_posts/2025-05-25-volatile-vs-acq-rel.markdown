@@ -79,7 +79,7 @@ void threadB() {
 }
 ```
 Due to the strong memory model of the X86 architecture (see [Chapter 10.2 in Volume 3 in the Combined Volume Set of Intel® 64 and IA-32 Architectures Software Developer’s Manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html))
-actually broken code like the this has a high chance of working on X86 CPUs unless JIT interferes, but might start to fail randomly on ARM, which has a
+actually broken code like this has a high chance of working on X86 CPUs unless JIT interferes, but might start to fail randomly on ARM, which has a
 [weakly-ordered memory architecture](https://developer.arm.com/documentation/102336/0100/Memory-ordering). This is not just a theoretical possibility, but can easily be 
 [demonstrated in tests](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-05-volatile-vs-ask-rel/src/test/java/at/mlangc/concurrent/seqcst/vs/ackrel/SafePublicationTest.java#L18)
 
@@ -225,7 +225,7 @@ As already mentioned, a volatile read implies a `getAcquire` and a volatile writ
 of your program must be explainable by performing volatile reads and writes in a certain global order, that is consistent with the 
 order of these operations in your program code. A more formal definition can be found in the 
 [Java Language Specification](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4.4). Note that this does not imply determinism or the absence of races between volatile operations.
-It just excludes counter-intuitive executions that are not explainable without out of order executions, like both threads winning
+It just excludes counter-intuitive executions that are not explainable without reorderings, like both threads winning
 the race in the last example.
 
 Let's have a closer look as to how volatile semantics are relied on in a real algorithm:
