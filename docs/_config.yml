@@ -26,6 +26,7 @@ domain: "mlangc.github.io"
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://mlangc.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  mlangc
+google_analytics: G-Z829NCMGBB
 
 # Build settings
 
