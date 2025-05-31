@@ -189,7 +189,7 @@ Both threads won after 7021 tries
 ```
 indicating that there is a fourth possibility
 
-| first1 | first2 | comment          |
+| first1 | first2 | explanation      |
 |--------|--------|------------------|
 | true   | true   | both threads win |
 
