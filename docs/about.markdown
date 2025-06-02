@@ -4,4 +4,5 @@ title: About
 permalink: /about/
 ---
 
-This is hopefully the most boring page of my private blog so you should leave it quickly.
+My private blog. Previously, I used to blog [on Medium](https://medium.com/@m.langer798),
+and a long long time ago, [on Wordpress](https://mlangc.wordpress.com/).
