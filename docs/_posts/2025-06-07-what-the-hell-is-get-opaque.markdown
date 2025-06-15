@@ -93,7 +93,7 @@ Unfortunately, I could not find any official documentation apart from the Javado
 [JDK 9 Memory Order Modes](https://gee.cs.oswego.edu/dl/html/j9mm.html) written by [Doug Lea](https://gee.cs.oswego.edu/dl/)
 who is the official author of most classes in `java.util.concurrent`, that contains a paragraph on
 "opaque mode". According to this document opaque mode is usable in the same contexts as 
-[C++ atomic memory_order_relaxed](https://cppreference.com/w/cpp/atomic/memory_order.html#Relaxed_ordering) or
+[C++ atomic memory_order_relaxed](https://cppreference.com/w/cpp/atomic/memory_order.html#Relaxed_ordering), which is the same as
 [relaxed ordering in Rust](https://marabos.nl/atomics/memory-ordering.html#relaxed).
 
 
@@ -136,8 +136,8 @@ plain and opaque reads are compiled to `ldr` instructions, whereas acquire and v
 The minimal differences I could observe in the benchmarks here and here when comparing very tight worker loops
 seem to be more the result of JIT implementation details than anything meaningful. Summarizing, using a `volatile boolean`
 to implement a stop signal not only makes your code more readable, it might even be slightly faster than using opaque mode
-because JIT implementers probably tend to think a lot more about dealing with `volatile` than about the most ideal
-ways to implement opaque mode.
+because JIT implementers probably tend to think a lot more about efficient ways to implement `volatile` than about 
+opaque mode.
 
 If you read the last paragraph carefully, you might wounder why we couldn't use plain reads and writes, that is
 plain mode, at least on X86 and ARM, to broadcast a stop signal. After all, the CPU instructions used for opaque access
@@ -157,7 +157,7 @@ static long brokenBroadcast() throws InterruptedException {
         return spins;
     });
 
-    Thread.sleep(250);
+    Thread.sleep(100);
     stop.setPlain(true);
     return job.join();
 }
@@ -183,7 +183,7 @@ static long brokenButAccidentallyWorkingBroadcast() throws InterruptedException 
         return spins;
     });
 
-    Thread.sleep(250);
+    Thread.sleep(100);
     stop.setPlain(true);
     return job.join();
 }
@@ -211,7 +211,8 @@ blog post and learn about [-XX:CompileCommand=print](https://docs.oracle.com/en/
 0x0000025c321d4303:   mov    0x30(%r15),%r8
 ;
 ; increments r9 (=spins), and then does some magic to calculate % 1_000_000_000
-; without a div instruction, since div is slow:
+; without a div instruction, since div is slow. See 
+; https://ridiculousfish.com/blog/posts/labor-of-division-episode-i.html if you are interested.
 ;
 0x0000025c321d4307:   lea    0x1(%rbx),%r9
 0x0000025c321d430b:   movabs $0x112e0be826d694b3,%rax
@@ -257,8 +258,29 @@ Let's summarize the important parts:
 * The generated code does not check the `stop` flag at all.
 * As soon as it hits the if block with the `printf`, it goes back to the interpreter.
 
-The interpreter than invokes `printf`, and checks the `stop` flag, which it this point is
+The interpreter then invokes `printf`, and checks the `stop` flag, which it this point is
 already `true`. Thus the loop terminates after exactly `1_000_000_000` iterations.
+
+You might wounder if JIT isn't going a bit over the top when simply removing the check for the
+stop flag. However, in most cases, this kind of optimization is exactly what you want, and far more
+common than you might initially think. Let me give you an example: Every time you iterate over an 
+`ArrayList` in a tight loop, using ```for (var elem : arrayList)```, you would have to pay for
+```java
+final void checkForComodification() {
+    if (modCount != expectedModCount)
+        throw new ConcurrentModificationException();
+}
+```
+in each iteration. This would add a significant performance penalty if JIT wasn't
+allowed to optimize this check away as long as it can prove that the loop body doesn't modify the list.
+The [Java Memory Model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4)
+has been specifically designed to allow this kind of optimizations. The only reliable way to make
+sure that updates from one thread to a variable are eventually picked up by other thread without any
+additional synchronisation, is to use opaque, or a stronger memory ordering mode, like volatile, for
+both reads and writes.
+
+#### Broadcasting Progress
+Another legitimate use case for opaque mode
 
 
 
