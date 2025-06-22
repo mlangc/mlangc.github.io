@@ -84,7 +84,7 @@ observed before the writes to `a` are indeed permitted, and in fact observable o
 and `b` are different atomics. "Spectacular" results can be ruled out though, because individual variables
 must be accessed in program order. Note that interesting results are not permitted with 
 `MemoryOrdering.ACQUIRE_RELEASE` or `MemoryOrdering.VOLATILE`, since then observing `b > 0` implies
-a happens-before-relationship with `a = 2`, as I explain at great lengths in my [previous blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) 
+a happens-before-relationship with `a = 2`, as I explain in my [previous blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) 
 about getAcquire and setRelease.
 
 ### Additional Documentation
@@ -93,9 +93,9 @@ Unfortunately, I could not find any official documentation apart from the Javado
 [JDK 9 Memory Order Modes](https://gee.cs.oswego.edu/dl/html/j9mm.html) written by [Doug Lea](https://gee.cs.oswego.edu/dl/)
 who is the official author of most classes in `java.util.concurrent`, that contains a paragraph on
 "opaque mode". According to this document opaque mode is usable in the same contexts as 
-[C++ atomic memory_order_relaxed](https://cppreference.com/w/cpp/atomic/memory_order.html#Relaxed_ordering), which is the same as
-[relaxed ordering in Rust](https://marabos.nl/atomics/memory-ordering.html#relaxed).
-
+[C++ atomic memory_order_relaxed](https://cppreference.com/w/cpp/atomic/memory_order.html#Relaxed_ordering), which is identical to
+[relaxed ordering in Rust](https://marabos.nl/atomics/memory-ordering.html#relaxed). Opaque mode is also mentioned and explained in a very interesting
+[workshop by Aleksey Shipilev about Java Concurrency Stress (JCStress)](https://www.youtube.com/watch?v=koU38cczBy8&t=4674s).
 
 ### Use Cases for get and setOpaque
 Opaque mode can be used whenever you want to pass and update to a single value to another thread. This includes
@@ -104,7 +104,7 @@ Publishing references to mutable objects using `get` and `setOpaque` however is 
 a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship.
 This means that the thread reading the object reference with `getOpaque` might see a partially constructed object.
 
-Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile mode.
+Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile.
 
 #### Broadcasting a Stop Signal
 Let's assume that you have one or more worker threads running code like
@@ -198,67 +198,30 @@ For me this reliably prints
 1000000000 spins already...
 Done after 1000000000 spins
 ```
-Am I always that lucky to terminate after exactly 1000000000 spins? Let's look into the generated assembler
-code to understand what is happening here (how to do this would be worth a blog post of its own; for the time being
-please have a look at the [Developers disassemble! Use Java and hsdis to see it all](https://blogs.oracle.com/javamagazine/post/java-hotspot-hsdis-disassembler)
-blog post and learn about [-XX:CompileCommand=print](https://docs.oracle.com/en/java/javase/24/docs/specs/man/java.html#advanced-jit-compiler-options-for-java)):
-```nasm
-; 
-; the loop starts here:
-;   r9 corresponds to "spins" in Java
-;
-0x0000025c321d4300:   mov    %r9,%rbx
-0x0000025c321d4303:   mov    0x30(%r15),%r8
-;
-; increments r9 (=spins), and then does some magic to calculate % 1_000_000_000
-; without a div instruction, since div is slow. See 
-; https://ridiculousfish.com/blog/posts/labor-of-division-episode-i.html if you are interested.
-;
-0x0000025c321d4307:   lea    0x1(%rbx),%r9
-0x0000025c321d430b:   movabs $0x112e0be826d694b3,%rax
-0x0000025c321d4315:   imul   %r9
-0x0000025c321d4318:   mov    %r9,%r10
-0x0000025c321d431b:   sar    $0x3f,%r10
-0x0000025c321d431f:   sar    $0x1a,%rdx
-0x0000025c321d4323:   sub    %r10,%rdx
-0x0000025c321d4326:   imul   $0x3b9aca00,%rdx,%r10
-0x0000025c321d432d:   sub    %r10,%rbx
-0x0000025c321d4330:   add    $0x1,%rbx
-0x0000025c321d4334:   cmp    %r11,%rbx
-0x0000025c321d4337:   mov    $0xffffffff,%r10d
-0x0000025c321d433d:   jl     0x0000025c321d4347
-0x0000025c321d433f:   setne  %r10b
-0x0000025c321d4343:   movzbl %r10b,%r10d                  ; ImmutableOopMap {rdi=Oop }
-                                                          ;*ifne {reexecute=1 rethrow=0 return_oop=0}
-                                                          ; - (reexecute) at.mlangc.concurrent.get.opaque.BroadcastStopExample::lambda$brokenButAccidentallyWorkingBroadcast$0@20 (line 48)
-0x0000025c321d4347:   test   %eax,(%r8)                   ;   {poll}
-0x0000025c321d434a:   test   %rbx,%rbx
-;
-; at this point, rbx contains spins % 1_000_000_000; jump back to the start of the 
-; loop unless 0, or we are at a safepoint (test directly above)
-;
-0x0000025c321d434d:   jne    0x0000025c321d4300
+Am I always that lucky to terminate after exactly 1000000000 spins? Not quite, if you look into the generated 
+assembler code (how to do this would be worth a blog post of its own; for the time being please have a look at the 
+[Developers disassemble! Use Java and hsdis to see it all](https://blogs.oracle.com/javamagazine/post/java-hotspot-hsdis-disassembler) blog post and learn about [-XX:CompileCommand=print](https://docs.oracle.com/en/java/javase/24/docs/specs/man/java.html#advanced-jit-compiler-options-for-java))
+you'll see that luck isn't involved at all, since what is actually executed is:
+```java
+void run() {
+    if (stop.getPlain()) {
+        goBackToInterpreter();
+    }
 
-0x0000025c321d434f:   mov    $0xffffff4d,%edx
-0x0000025c321d4354:   mov    %rdi,%rbp
-0x0000025c321d4357:   mov    %r9,0x20(%rsp)
-0x0000025c321d435c:   mov    %r10d,0x28(%rsp)
-0x0000025c321d4361:   xchg   %ax,%ax
-;
-; we are going back to interpreted mode since the body of the if in the loop
-; was not compiled.
-;
-0x0000025c321d4363:   call   0x0000025c31bb4f60           ; ImmutableOopMap {rbp=Oop }
-                                                          ;*ifne {reexecute=1 rethrow=0 return_oop=0}
-                                                          ; - (reexecute) at.mlangc.concurrent.get.opaque.BroadcastStopExample::lambda$brokenButAccidentallyWorkingBroadcast$0@20 (line 48)
-                                                          ;   {runtime_call UncommonTrapBlob}
-0x0000025c321d4368:   nopl   0x10001e0(%rax,%rax,1)       ;   {post_call_nop}
+    var spins = 0;
+    do {
+        spins++;
+        pollForSafePoint();
+    } while (spins % 1_000_000_000 != 0);
+
+    goBackToInterpreter();
+}
 ```
 Let's summarize the important parts:
-* The generated code does not check the `stop` flag at all.
+* The generated code does not check the `stop` flag in the loop at all.
 * As soon as it hits the if block with the `printf`, it goes back to the interpreter.
 
-The interpreter then invokes `printf`, and checks the `stop` flag, which it this point is
+The interpreter then invokes `printf`, and checks the `stop` flag, which at this point is
 already `true`. Thus the loop terminates after exactly `1_000_000_000` iterations.
 
 You might wounder if JIT isn't going a bit over the top when simply removing the check for the
@@ -271,16 +234,57 @@ final void checkForComodification() {
         throw new ConcurrentModificationException();
 }
 ```
-in each iteration. This would add a significant performance penalty if JIT wasn't
+again and again. This would incur a significant performance penalty if JIT wasn't
 allowed to optimize this check away as long as it can prove that the loop body doesn't modify the list.
 The [Java Memory Model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4)
 has been specifically designed to allow this kind of optimizations. The only reliable way to make
 sure that updates from one thread to a variable are eventually picked up by other thread without any
-additional synchronisation, is to use opaque, or a stronger memory ordering mode, like volatile, for
+additional synchronisation, is to use opaque, or a stronger memory ordering mode for
 both reads and writes.
 
 #### Broadcasting Progress
-Another legitimate use case for opaque mode
+Another legitimate use case for opaque mode is publishing progress information in a scenario where on thread
+performs some long running task, and another thread monitors it's progress. Simplified to it's bare minimum,
+it could look like this:
+```java
+final AtomicInteger progress = new AtomicInteger(0);
+
+void workerThread() {
+    while (!done()) {
+        work();
+        progress.setOpaque(progress.getPlain() + 1);
+    }
+}
+
+void monitoringThread() throws InterruptedException {
+    while (!done()) {
+        out.printf("progress=%s%n", progress.getOpaque());
+        Thread.sleep(10);
+    }
+}
+```
+When using plain writes, that is `progress.setPlain(progress.getPlain() + 1)` JIT might be tempted to "optimize" 
+`workerThread()` into 
+```java
+void workerThread() {
+    var progressInRegister = 0;
+    while (!done()) {
+        work();
+        progressInRegister++;
+    }
+    progress.setPlain(progressInRegister);
+}
+```
+which is probably not what you indented. Opaque mode prevents this optimization.
+
+### Summary & Recommendation
+Opaque mode can be used to share a single value between threads, but it comes with absolutely no guarantees for other 
+memory locations. This makes it too weak for most use cases, since observing an opaque write by an opaque read in another
+thread doesn't establish a happens-before relationship. Even where it's safe, just sticking with `volatile` is almost
+certainly the better choice.
+
+
+
 
 
 
