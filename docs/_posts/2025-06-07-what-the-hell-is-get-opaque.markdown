@@ -9,7 +9,7 @@ on [getOpaque](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java
 and [setOpaque](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/invoke/VarHandle.html#setOpaque(java.lang.Object...)).
 
 I'll show how it is defined and what that means in practice, as well as how `get` and `setOpaque` relate
-to the weaker `get` and `setPlain` and the stronger `getAcquire` and `setRelease`.
+to the weaker `getPlain` and `setPlain` and the stronger `getAcquire` and `setRelease`.
 
 ## Javadocs and their Interpretation
 Unfortunately, the [Javadocs](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/invoke/VarHandle.html#getOpaque(java.lang.Object...))
@@ -98,11 +98,11 @@ who is the official author of most classes in `java.util.concurrent`, that conta
 [workshop by Aleksey Shipilev about Java Concurrency Stress (JCStress)](https://www.youtube.com/watch?v=koU38cczBy8&t=4674s).
 
 ### Use Cases for get and setOpaque
-Opaque mode can be used whenever you want to pass and update to a single value to another thread. This includes
+Opaque mode can be used whenever you want to share an update to a single value with other threads. This includes
 primitive types, like `boolean`, `int`, `long` as well as references to immutable objects.
 Publishing references to mutable objects using `get` and `setOpaque` however is unsafe, since reading
 a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship.
-This means that the thread reading the object reference with `getOpaque` might see a partially constructed object.
+This means that the reading thread might see the object in an inconsistent state.
 
 Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile.
 
@@ -130,14 +130,13 @@ void sendStopSignal() {
 }
 ```
 Does it buy you something over just using `volatile boolean`, or `AtomicBoolean.get` and `AtomicBoolean.set`?
-Probably not. On X86, reads are compiled down to a single `mov` instruction, regardless of their type. On ARM,
+Probably not. On X86, reads are compiled to a single `mov` instruction, regardless of their type. On ARM,
 plain and opaque reads are compiled to `ldr` instructions, whereas acquire and volatile reads are implemented using
 [ldar instructions](https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions).
 The minimal differences I could observe in the benchmarks here and here when comparing very tight worker loops
-seem to be more the result of JIT implementation details than anything meaningful. Summarizing, using a `volatile boolean`
-to implement a stop signal not only makes your code more readable, it might even be slightly faster than using opaque mode
-because JIT implementers probably tend to think a lot more about efficient ways to implement `volatile` than about 
-opaque mode.
+seem to be more the result of JIT implementation details than anything meaningful. However, tough I couldn't observe
+this in my benchmarks, opaque reads and writes have the potential to be faster than acquire-release and volatile mode 
+on ARM, since they are translated to more lightweight CPU instructions.
 
 If you read the last paragraph carefully, you might wounder why we couldn't use plain reads and writes, that is
 plain mode, at least on X86 and ARM, to broadcast a stop signal. After all, the CPU instructions used for opaque access
@@ -211,7 +210,7 @@ void run() {
     var spins = 0;
     do {
         spins++;
-        pollForSafePoint();
+        pollForSafePoint(); // <-- https://shipilev.net/jvm/anatomy-quarks/22-safepoint-polls/
     } while (spins % 1_000_000_000 != 0);
 
     goBackToInterpreter();
@@ -243,8 +242,8 @@ additional synchronisation, is to use opaque, or a stronger memory ordering mode
 both reads and writes.
 
 #### Broadcasting Progress
-Another legitimate use case for opaque mode is publishing progress information in a scenario where on thread
-performs some long running task, and another thread monitors it's progress. Simplified to it's bare minimum,
+Another legitimate use case for opaque mode is publishing progress information in a scenario where one thread
+performs some long running task, and another thread monitors its progress. Simplified to it's bare minimum,
 it could look like this:
 ```java
 final AtomicInteger progress = new AtomicInteger(0);
@@ -278,10 +277,9 @@ void workerThread() {
 which is probably not what you indented. Opaque mode prevents this optimization.
 
 ### Summary & Recommendation
-Opaque mode can be used to share a single value between threads, but it comes with absolutely no guarantees for other 
-memory locations. This makes it too weak for most use cases, since observing an opaque write by an opaque read in another
-thread doesn't establish a happens-before relationship. Even where it's safe, just sticking with `volatile` is almost
-certainly the better choice.
+Opaque mode can be used to share a single value between threads, but it is poorly documented, and it comes with 
+absolutely no guarantees for other memory locations, which makes it too weak for many use cases. Even where it's safe,
+just sticking with `volatile` is probably the better choice.
 
 
 
