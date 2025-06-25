@@ -27,7 +27,8 @@ Rephrasing this, it means that the
 runtime or hardware must not reorder opaque operations with other opaque operations on the same variable. 
 It is however perfectly legal to reorder opaque operations with other opaque operations on different variables.
 
-Let's see what this actually means in the [following example](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/get/opaque/ObservedSequenceRace.java#L133):
+Let's see what this actually means in the [following example](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/get/opaque/ObservedSequenceRace.java#L133), that uses the [MemoryOrdering helper enum](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/MemoryOrdering.java#L5)
+introduced in [my last blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html):
 ```java
   static class SetGetRace {
       private final MemoryOrdering memoryOrdering;
@@ -54,7 +55,7 @@ Let's see what this actually means in the [following example](https://github.com
 
           var getJob = CompletableFuture.supplyAsync(() -> {
               // Note that a is written before b,
-              // but b is read before reading a.
+              // but b is read before a.
               var b1 = memoryOrdering.get(b);
               var a1 = memoryOrdering.get(a);
               var b2 = memoryOrdering.get(b);
@@ -70,10 +71,13 @@ Let's see what this actually means in the [following example](https://github.com
   
   record RaceResult(int b1, int a1, int b2, int a2) {
       boolean interesting() {
+          // Only possible if reads or writes have been reordered.
           return b1 > a1 || b2 > a2;
       }
 
       boolean spectacular() {
+          // Only possible if reads or writes to the same variable
+          // have been reordered.
           return a1 > a2 || b1 > b2;
       }
   }
@@ -82,13 +86,13 @@ Can we observe "interesting" (in the sense of `RaceResult#interesting`), or even
 `RaceResult#spectacular`) results? The answer is that "interesting" results, where the writes to `b` are
 observed before the writes to `a` are indeed permitted, and in fact observable on ARM systems, because `a`
 and `b` are different atomics. "Spectacular" results can be ruled out though, because individual variables
-must be accessed in program order. Note that interesting results are not permitted with 
+must be accessed in program order. Note that interesting (or spectacular) results are not permitted with 
 `MemoryOrdering.ACQUIRE_RELEASE` or `MemoryOrdering.VOLATILE`, since then observing `b > 0` implies
 a happens-before-relationship with `a = 2`, as I explain in my [previous blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) 
 about getAcquire and setRelease.
 
 ### Additional Documentation
-Unfortunately, I could not find any official documentation apart from the Javadocs about `getOpaque` and 
+Unfortunately, I could not find any additional official documentation apart from the Javadocs about `getOpaque` and 
 `setOpaque`. There is however a very well written, and comprehensive guide about 
 [JDK 9 Memory Order Modes](https://gee.cs.oswego.edu/dl/html/j9mm.html) written by [Doug Lea](https://gee.cs.oswego.edu/dl/)
 who is the official author of most classes in `java.util.concurrent`, that contains a paragraph on
@@ -102,7 +106,7 @@ Opaque mode can be used whenever you want to share an update to a single value w
 primitive types, like `boolean`, `int`, `long` as well as references to immutable objects.
 Publishing references to mutable objects using `get` and `setOpaque` however is unsafe, since reading
 a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship.
-This means that the reading thread might see the object in an inconsistent state.
+This means that the reading thread might see the object in an inconsistent and/or partially constructed state.
 
 Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile.
 
@@ -135,12 +139,12 @@ plain and opaque reads are compiled to `ldr` instructions, whereas acquire and v
 [ldar instructions](https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions).
 The minimal differences I could observe in the benchmarks here and here when comparing very tight worker loops
 seem to be more the result of JIT implementation details than anything meaningful. However, tough I couldn't observe
-this in my benchmarks, opaque reads and writes have the potential to be faster than acquire-release and volatile mode 
-on ARM, since they are translated to more lightweight CPU instructions.
+this in my benchmarks, opaque reads and writes have the potential to be faster than acquire-release and volatile 
+accesses on ARM, since they are translated to more lightweight CPU instructions.
 
 If you read the last paragraph carefully, you might wounder why we couldn't use plain reads and writes, that is
 plain mode, at least on X86 and ARM, to broadcast a stop signal. After all, the CPU instructions used for opaque access
-on ARM and X86 are ordinary reads. However, CPU instructions only matter if they are executed, which might not be
+on ARM and X86 are ordinary loads. However, CPU instructions only matter if they are executed, which might not be
 the case in plain mode, since JIT will optimize the check for the stop flag away if it can prove that the loop body
 never modifies it. This proof typically succeeds if the loop body can be fully inlined. Let
 me illustrate this point by two examples:
@@ -237,7 +241,7 @@ again and again. This would incur a significant performance penalty if JIT wasn'
 allowed to optimize this check away as long as it can prove that the loop body doesn't modify the list.
 The [Java Memory Model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4)
 has been specifically designed to allow this kind of optimizations. The only reliable way to make
-sure that updates from one thread to a variable are eventually picked up by other thread without any
+sure that updates to a variable from one thread are eventually picked up by other threads without
 additional synchronisation, is to use opaque, or a stronger memory ordering mode for
 both reads and writes.
 
@@ -274,12 +278,12 @@ void workerThread() {
     progress.setPlain(progressInRegister);
 }
 ```
-which is probably not what you indented. Opaque mode prevents this optimization.
+which is probably not what you indented. Opaque mode, as well as any stronger mode, prevents this optimization.
 
 ### Summary & Recommendation
 Opaque mode can be used to share a single value between threads, but it is poorly documented, and it comes with 
 absolutely no guarantees for other memory locations, which makes it too weak for many use cases. Even where it's safe,
-just sticking with `volatile` is probably the better choice.
+sticking with `volatile` is probably the better choice.
 
 
 
