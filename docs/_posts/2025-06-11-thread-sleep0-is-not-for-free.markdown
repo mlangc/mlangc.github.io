@@ -8,7 +8,7 @@ In this short blog post, I want to clear up a common misconception about `java.l
 Calling `Thread.sleep(0)` is not for free. While the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
 would allow a fast path for `millis == 0` that only checks the interrupted status of the current
 thread to potentially throw an [InterruptedException](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/InterruptedException.html),
-the actual implementation at first, calls into the [native method sleep0(long nanos)](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/classes/java/lang/Thread.java#L516)
+the actual implementation at first, calls into the [native method Thread.sleepNanos0(long nanos)](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/classes/java/lang/Thread.java#L516)
 which is defined in [Thread.c](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/native/libjava/Thread.c#L42),
 and implemented by [JVM_SleepNanos](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/hotspot/share/prims/jvm.cpp#L2876).
 The latter function indeed first checks for interrupts and then contains a special case for `nanos == 0`, however, it looks like
@@ -33,7 +33,7 @@ that clearly states in [its documentation](https://man7.org/linux/man-pages/man2
 > unnecessary context switches, which will degrade system
 > performance.
 
-With my local setup, calling `Thread.sleep(0)` is roughly as expensive as calling
+Indeed, with my local setup, calling `Thread.sleep(0)` is roughly as expensive as calling
 [ThreadLocalRandom.nextBytes](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/Random.html#nextBytes(byte%5B%5D))
 with `byte[128]`, according to [this JMH benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/thread-sleep0/src/jmh/java/at/mlangc/benchmarks/ThreadSleep0Benchmark.java#L14).
 
