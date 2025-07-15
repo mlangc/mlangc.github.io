@@ -36,6 +36,9 @@ that clearly states in [its documentation](https://man7.org/linux/man-pages/man2
 Indeed, with my local setup, calling `Thread.sleep(0)` is roughly as expensive as calling
 [ThreadLocalRandom.nextBytes](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/Random.html#nextBytes(byte%5B%5D))
 with `byte[128]`, according to [this JMH benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/thread-sleep0/src/jmh/java/at/mlangc/benchmarks/ThreadSleep0Benchmark.java#L14).
+Moreover, the same benchmark can be used to demonstrate that `Thread.sleep(0)` is especially expensive when you
+need it the least, that is when the CPU is already overloaded, since yielding will more likely result in context
+switches if there are many threads starving for CPU.
 
 In performance critical code, I therefore recommend replacing
 ```java
