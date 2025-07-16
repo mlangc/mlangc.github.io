@@ -5,13 +5,13 @@ date:   2025-05-25 08:52:34 +0200
 categories: "Java Performance"
 ---
 In this short blog post, I want to clear up a common misconception about `java.lang.Thread.sleep`.
-Calling `Thread.sleep(0)` is not for free. While the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
+Calling `Thread.sleep(0)` is not for free. True, the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
 would allow a fast path for `millis == 0` that only checks the interrupted status of the current
-thread to potentially throw an [InterruptedException](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/InterruptedException.html),
-the actual implementation at first, calls into the [native method Thread.sleepNanos0(long nanos)](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/classes/java/lang/Thread.java#L516)
+thread to potentially throw an [InterruptedException](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/InterruptedException.html).
+The actual implementation however, at first calls into the [native method Thread.sleepNanos0(long nanos)](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/classes/java/lang/Thread.java#L516)
 which is defined in [Thread.c](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/java.base/share/native/libjava/Thread.c#L42),
 and implemented by [JVM_SleepNanos](https://github.com/openjdk/jdk/blob/445e5ecd98f41d4d625af5731f7b5d10c9225e49/src/hotspot/share/prims/jvm.cpp#L2876).
-The latter function indeed first checks for interrupts and then contains a special case for `nanos == 0`, however, it looks like
+The native code then checks for interrupts and indeed contains a special case for `nanos == 0`, however, it looks like
 
 ```cpp
   if (nanos == 0) {
