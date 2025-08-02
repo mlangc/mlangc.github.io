@@ -25,71 +25,104 @@ of `get` and `setOpaque` are somewhat vague, stating
 
 Rephrasing this, it means that the 
 runtime or hardware must not reorder opaque operations with other opaque operations on the same variable. 
-It is however perfectly legal to reorder opaque operations with other opaque operations on different variables.
+It is, however, perfectly legal to reorder opaque operations with other opaque operations on different variables.
 
-Let's see what this actually means in the [following example](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/get/opaque/ObservedSequenceRace.java#L133), that uses the [MemoryOrdering helper enum](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/MemoryOrdering.java#L5)
-introduced in [my last blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html):
+To illustrate what that means, I've put together a small [JCStress](https://github.com/openjdk/jcstress) test [here](https://github.com/mlangc/jcstress/blob/refs/heads/blog-2025-06-get-opaque/tests-custom/src/main/java/org/openjdk/jcstress/tests/atomics/integer/AtomicIntegerSetGetOpaqueTest.java#L53):
 ```java
-  static class SetGetRace {
-      private final MemoryOrdering memoryOrdering;
-      private final AtomicInteger a;
-      private final AtomicInteger b;
+@JCStressTest
+@Description("Demonstrates the behaviour of opaque mode")
+@Outcome(id = "0, 0, 0", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0, 0, 1", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0, 0, 2", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0, 1, 0", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0, 1, 1", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0, 1, 2", expect = Expect.ACCEPTABLE)
+@Outcome(id = "1, 0, 0", expect = Expect.FORBIDDEN, desc = "b=1, then b=0")
+@Outcome(id = "1, 0, 1", expect = Expect.ACCEPTABLE_INTERESTING, desc = "b=1, then a=0")
+@Outcome(id = "1, 0, 2", expect = Expect.ACCEPTABLE_INTERESTING, desc = "b=1, then a=0")
+@Outcome(id = "1, 1, 0", expect = Expect.FORBIDDEN, desc = "b=1, then b=0")
+@Outcome(id = "1, 1, 1", expect = Expect.ACCEPTABLE)
+@Outcome(id = "1, 1, 2", expect = Expect.ACCEPTABLE)
+@Outcome(id = "2, 0, 0", expect = Expect.FORBIDDEN, desc = "b=2, then b=0")
+@Outcome(id = "2, 0, 1", expect = Expect.FORBIDDEN, desc = "b=2, then b=1")
+@Outcome(id = "2, 0, 2", expect = Expect.ACCEPTABLE_INTERESTING, desc = "b=2, then a=0")
+@Outcome(id = "2, 1, 0", expect = Expect.FORBIDDEN, desc = "b=2, then b=0")
+@Outcome(id = "2, 1, 1", expect = Expect.FORBIDDEN, desc = "b=2, then b=1")
+@Outcome(id = "2, 1, 2", expect = Expect.ACCEPTABLE)
+@State
+public class AtomicIntegerSetGetOpaqueTest {
+    final AtomicInteger a = new AtomicInteger();
+    final AtomicInteger b = new AtomicInteger();
 
-      SetGetRace(MemoryOrdering memoryOrdering, AtomicInteger a, AtomicInteger b) {
-          this.memoryOrdering = memoryOrdering;
-          this.a = a;
-          this.b = b;
-      }
+    @Actor
+    public void actor1() {
+        a.setOpaque(1);
+        b.setOpaque(1);
+        b.setOpaque(2);
+    }
 
-      RaceResult run() {
-          a.setPlain(0);
-          b.setPlain(0);
-
-          var setJob = CompletableFuture.runAsync(() -> {
-              memoryOrdering.set(a, 1);
-              memoryOrdering.set(a, 2);
-
-              memoryOrdering.set(b, 1);
-              memoryOrdering.set(b, 2);
-          });
-
-          var getJob = CompletableFuture.supplyAsync(() -> {
-              // Note that a is written before b,
-              // but b is read before a.
-              var b1 = memoryOrdering.get(b);
-              var a1 = memoryOrdering.get(a);
-              var b2 = memoryOrdering.get(b);
-              var a2 = memoryOrdering.get(a);
-
-              return new RaceResult(b1, a1, b2, a2);
-          });
-
-          setJob.join();
-          return getJob.join();
-      }
-  }
-  
-  record RaceResult(int b1, int a1, int b2, int a2) {
-      boolean interesting() {
-          // Only possible if reads or writes have been reordered.
-          return b1 > a1 || b2 > a2;
-      }
-
-      boolean spectacular() {
-          // Only possible if reads or writes to the same variable
-          // have been reordered.
-          return a1 > a2 || b1 > b2;
-      }
-  }
+    @Actor
+    public void actor2(III_Result r) {
+        r.r1 = b.getOpaque();
+        r.r2 = a.getOpaque();
+        r.r3 = b.getOpaque();
+    }
+}
 ```
-Can we observe "interesting" (in the sense of `RaceResult#interesting`), or even "spectacular" (in the sense of
-`RaceResult#spectacular`) results? The answer is that "interesting" results, where the writes to `b` are
-observed before the writes to `a` are indeed permitted, and in fact observable on ARM systems, because `a`
-and `b` are different atomics. "Spectacular" results can be ruled out though, because individual variables
-must be accessed in program order. Note that interesting (or spectacular) results are not permitted with 
-`MemoryOrdering.ACQUIRE_RELEASE` or `MemoryOrdering.VOLATILE`, since then observing `b > 0` implies
-a happens-before-relationship with `a = 2`, as I explain in my [previous blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) 
-about getAcquire and setRelease.
+The test contains two atomics, `a` and `b`, and two actors, that execute concurrently. Note that actor 1 writes `a` first,
+but actor 2 reads `b` first. The list of `@Outcome` annotations attached to the test class enumerates all imaginable `3 * 2 * 3 = 18`
+outcomes, and qualifies them as acceptable, interesting or forbidden. To execute this test after checking out this branch,
+you need to run 
+```
+$ mvn package -pl tests-custom -am -DskipTests
+$ java -jar tests-custom/target/jcstress.jar -v -t AtomicIntegerSetGetOpaqueTest
+```
+
+Executing this on a Google Axion ARM VM, I get
+```text
+  Results across all configurations:
+
+   RESULT      SAMPLES     FREQ       EXPECT  DESCRIPTION
+  0, 0, 0  467,556,008   48.46%   Acceptable  
+  0, 0, 1       54,242   <0.01%   Acceptable  
+  0, 0, 2      710,132    0.07%   Acceptable  
+  0, 1, 0      801,328    0.08%   Acceptable  
+  0, 1, 1      181,784    0.02%   Acceptable  
+  0, 1, 2    2,070,255    0.21%   Acceptable  
+  1, 0, 0            0    0.00%    Forbidden  b=1, then b=0
+  1, 0, 1        3,270   <0.01%  Interesting  b=1, then a=0
+  1, 0, 2           12   <0.01%  Interesting  b=1, then a=0
+  1, 1, 0            0    0.00%    Forbidden  b=1, then b=0
+  1, 1, 1      149,163    0.02%   Acceptable  
+  1, 1, 2      346,645    0.04%   Acceptable  
+  2, 0, 0            0    0.00%    Forbidden  b=2, then b=0
+  2, 0, 1            0    0.00%    Forbidden  b=2, then b=1
+  2, 0, 2      339,578    0.04%  Interesting  b=2, then a=0
+  2, 1, 0            0    0.00%    Forbidden  b=2, then b=0
+  2, 1, 1            0    0.00%    Forbidden  b=2, then b=1
+  2, 1, 2  492,645,876   51.06%   Acceptable  
+```
+Note the "interesting" results, where the writes to `b` are observed before the writes to `a`, though `a` is updated
+before `b` in the Java code. This is legal, since opaque mode gives "no assurance of memory ordering effects with respect to 
+other threads". To rule out the "interesting" cases, you can either switch to the more strongly ordered X86 architecture
+(see [Chapter 10.2 in Volume 3 in the Combined Volume Set of Intel® 64 and IA-32 Architectures Software Developer’s Manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) for details),
+or upgrade to acquire-release mode (see my [last blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html)), like
+[this](https://github.com/mlangc/jcstress/blob/refs/heads/blog-2025-06-get-opaque/tests-custom/src/main/java/org/openjdk/jcstress/tests/atomics/integer/AtomicIntegerSetGetAckRelTest.java#L53):
+```java
+    @Actor
+    public void actor1() {
+        a.setRelease(1);
+        b.setRelease(1);
+        b.setRelease(2);
+    }
+
+    @Actor
+    public void actor2(III_Result r) {
+        r.r1 = b.getAcquire();
+        r.r2 = a.getAcquire();
+        r.r3 = b.getAcquire();
+    }
+```
 
 ### Additional Documentation
 Unfortunately, I could not find any additional official documentation apart from the Javadocs about `getOpaque` and 
@@ -106,7 +139,7 @@ Opaque mode can be used whenever you want to share an update to a single value w
 primitive types, like `boolean`, `int`, `long` as well as references to immutable objects.
 Publishing references to mutable objects using `get` and `setOpaque` however is unsafe, since reading
 a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship.
-This means that the reading thread might see the object in an inconsistent and/or partially constructed state.
+This means that the reading thread might see the object reference before seeing all writes from the constructor.
 
 Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile.
 
@@ -203,8 +236,8 @@ Done after 1000000000 spins
 ```
 Am I always that lucky to terminate after exactly 1000000000 spins? Not quite, if you look into the generated 
 assembler code (how to do this would be worth a blog post of its own; for the time being please have a look at the 
-[Developers disassemble! Use Java and hsdis to see it all](https://blogs.oracle.com/javamagazine/post/java-hotspot-hsdis-disassembler) blog post and learn about [-XX:CompileCommand=print](https://docs.oracle.com/en/java/javase/24/docs/specs/man/java.html#advanced-jit-compiler-options-for-java))
-you'll see that luck isn't involved at all, since what is actually executed is:
+[Developers disassemble! Use Java and hsdis to see it all](https://blogs.oracle.com/javamagazine/post/java-hotspot-hsdis-disassembler) blog post and check out the [-XX:CompileCommand=print](https://docs.oracle.com/en/java/javase/24/docs/specs/man/java.html#advanced-jit-compiler-options-for-java)
+option) you'll see that luck isn't involved at all, since what is actually executed is:
 ```java
 void run() {
     if (stop.getPlain()) {
@@ -224,11 +257,11 @@ Let's summarize the important parts:
 * The generated code does not check the `stop` flag in the loop at all.
 * As soon as it hits the if block with the `printf`, it goes back to the interpreter.
 
-The interpreter then invokes `printf`, and checks the `stop` flag, which at this point is
+The interpreter then invokes `printf`, and then continues execution by checking the `stop` flag, which at this point is
 already `true`. Thus the loop terminates after exactly `1_000_000_000` iterations.
 
-You might wounder if JIT isn't going a bit over the top when simply removing the check for the
-stop flag. However, in most cases, this kind of optimization is exactly what you want, and far more
+So isn't JIT going a bit over the top when simply removing the check for the stop flag? Maybe in this very particular case,
+however, normally, this kind of optimization is exactly what you want, and far more
 common than you might initially think. Let me give you an example: Every time you iterate over an 
 `ArrayList` in a tight loop, using ```for (var elem : arrayList)```, you would have to pay for
 ```java
@@ -240,14 +273,14 @@ final void checkForComodification() {
 again and again. This would incur a significant performance penalty if JIT wasn't
 allowed to optimize this check away as long as it can prove that the loop body doesn't modify the list.
 The [Java Memory Model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4)
-has been specifically designed to allow this kind of optimizations. The only reliable way to make
+has been specifically designed to allow these kinds of optimizations. The only reliable way to make
 sure that updates to a variable from one thread are eventually picked up by other threads without
-additional synchronisation, is to use opaque, or a stronger memory ordering mode for
+additional synchronization, is to use opaque, or a stronger memory ordering mode for
 both reads and writes.
 
 #### Broadcasting Progress
 Another legitimate use case for opaque mode is publishing progress information in a scenario where one thread
-performs some long running task, and another thread monitors its progress. Simplified to it's bare minimum,
+performs some long running task, and another thread monitors its progress. Simplified to its bare minimum,
 it could look like this:
 ```java
 final AtomicInteger progress = new AtomicInteger(0);
