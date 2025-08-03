@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "What the Hell is GetOpaque in Java"
-date:   2025-05-25 08:52:34 +0200
+date:   2025-08-03 08:52:34 +0200
 categories: "Java Concurrency"
 ---
 In this blog post, that can be seen as a follow-up of my last post acquire release semantics, I want to shine some light
@@ -73,7 +73,7 @@ The test contains two atomics, `a` and `b`, and two actors, that execute concurr
 but actor 2 reads `b` first. The list of `@Outcome` annotations attached to the test class enumerates all imaginable `3 * 2 * 3 = 18`
 outcomes, and qualifies them as acceptable, interesting or forbidden. To execute this test after checking out this branch,
 you need to run 
-```
+```shell
 $ mvn package -pl tests-custom -am -DskipTests
 $ java -jar tests-custom/target/jcstress.jar -v -t AtomicIntegerSetGetOpaqueTest
 ```
@@ -138,10 +138,66 @@ who is the official author of most classes in `java.util.concurrent`, that conta
 Opaque mode can be used whenever you want to share an update to a single value with other threads. This includes
 primitive types, like `boolean`, `int`, `long` as well as references to immutable objects.
 Publishing references to mutable objects using `get` and `setOpaque` however is unsafe, since reading
-a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship.
-This means that the reading thread might see the object reference before seeing all writes from the constructor.
+a reference with `getOpaque` that has been published with `setOpaque` does not establish a happens-before-relationship
+with writes to non-final fields before the publication. Let me emphasize this essential point with 
+[another JCStress test](https://github.com/mlangc/jcstress/blob/refs/heads/blog-2025-06-get-opaque/tests-custom/src/main/java/org/openjdk/jcstress/tests/atomics/references/AtomicReferenceSetGetOpaqueTest.java#L37):
+```java
+@JCStressTest
+@Description("Shows why opaque mode must not used to publish objects with non final fields")
+@Outcome(id = "42", expect = Expect.ACCEPTABLE)
+@Outcome(id = "0", expect = Expect.ACCEPTABLE_INTERESTING, desc = "observed partially constructed object")
+@State
+public class AtomicReferenceSetGetOpaqueTest {
+    static class Holder {
+        int x = 42;
+    }
 
-Having said that, let's talk about valid use cases, where opaque mode can be safely used instead of volatile.
+    final AtomicReference<Holder> ref = new AtomicReference<>();
+
+    @Actor
+    public void actor1() {
+        ref.setOpaque(new Holder());
+    }
+
+    @Actor
+    public void actor2(I_Result r) {
+        while (true) {
+            Holder h = ref.getOpaque();
+            if (h == null) {
+                Thread.onSpinWait();
+                continue;
+            }
+
+            r.r1 = h.x;
+            return;
+        }
+    }
+}
+```
+Here one actor publishes a reference to a `Holder` object, that contains a non-final `int`, that is initialized to `42` in the
+constructor. The other actor waits till the reference shows up, and then reads the `int`. Executing this on the same Google Axion ARM VM
+I was mentioning before via
+
+```shell
+$ mvn package -pl tests-custom -am -DskipTests
+$ java -jar tests-custom/target/jcstress.jar -v -t AtomicReferenceSetGetOpaqueTest
+```
+
+gives me
+
+```text
+  Results across all configurations:
+
+  RESULT        SAMPLES     FREQ       EXPECT  DESCRIPTION
+       0         51,636   <0.01%  Interesting  observed partially constructed object
+      42  1,081,532,417  100.00%   Acceptable  
+```
+
+As you can see, even in this basic example, there is a tiny probability of things going south when using opaque mode to
+publish object references. Again, getting rid of the "interesting" outcome requires either sticking to X86, or to upgrade to at
+least acquire-release mode.
+
+Having said all that, let's let's come back to valid use cases.
 
 #### Broadcasting a Stop Signal
 Let's assume that you have one or more worker threads running code like
@@ -169,13 +225,45 @@ void sendStopSignal() {
 Does it buy you something over just using `volatile boolean`, or `AtomicBoolean.get` and `AtomicBoolean.set`?
 Probably not. On X86, reads are compiled to a single `mov` instruction, regardless of their type. On ARM,
 plain and opaque reads are compiled to `ldr` instructions, whereas acquire and volatile reads are implemented using
-[ldar instructions](https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions).
-The minimal differences I could observe in the benchmarks here and here when comparing very tight worker loops
-seem to be more the result of JIT implementation details than anything meaningful. However, tough I couldn't observe
-this in my benchmarks, opaque reads and writes have the potential to be faster than acquire-release and volatile 
-accesses on ARM, since they are translated to more lightweight CPU instructions.
+[ldar instructions](https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions). I assembled [this JMH benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/jmh/java/at/mlangc/concurrent/FibonacciTillStopBenchmark.java#L16),
+to gain a better understanding of the performance impact implied by different access modes, that calculates Fibonacci numbers while checking a stop flag. 
+The benchmark relies on the [memory ordering enum](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/MemoryOrdering.java#L5) 
+I've introduced in [my last blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) and looks like
+```java
+@Param({"VOLATILE", "ACQUIRE_RELEASE", "OPAQUE"})
+private MemoryOrdering memoryOrdering;
 
-If you read the last paragraph carefully, you might wounder why we couldn't use plain reads and writes, that is
+@Param({"1", "10"})
+private int batchSize;
+
+@Param("100000")
+private int limit;
+
+@Benchmark
+public int fibTillStop() {
+    final var mod = 1_000_000_007;
+    var fib0 = 0;
+    var fib1 = 1;
+
+    for (int i = 0; !memoryOrdering.get(stop) && i < limit; i += batchSize) {
+        for (int j = 0; j < batchSize; j++) {
+            var fib2 = fib0 + fib1;
+            if (fib2 >= mod) fib2 -= mod;
+            fib0 = fib1;
+            fib1 = fib2;
+        }
+    }
+
+    return fib1;
+}
+```
+
+Executing this on a Google Axion ARM `c4a-highcpu-4` instance with a `corretto-24.0.1` JVM, I get
+![fib-till-stop-bench-results](/assets/img/2025-06-07-fib-till-stop-arm-coretto.png)
+A similar picture can be observed on X86. Therefore, if you want to improve the performance
+of a loop like the one above, using bigger batches, and not tweaking the memory ordering, is the way to go.
+
+If you read the last paragraphs carefully, you might wounder why we couldn't use plain reads and writes, that is
 plain mode, at least on X86 and ARM, to broadcast a stop signal. After all, the CPU instructions used for opaque access
 on ARM and X86 are ordinary loads. However, CPU instructions only matter if they are executed, which might not be
 the case in plain mode, since JIT will optimize the check for the stop flag away if it can prove that the loop body
@@ -239,9 +327,9 @@ assembler code (how to do this would be worth a blog post of its own; for the ti
 [Developers disassemble! Use Java and hsdis to see it all](https://blogs.oracle.com/javamagazine/post/java-hotspot-hsdis-disassembler) blog post and check out the [-XX:CompileCommand=print](https://docs.oracle.com/en/java/javase/24/docs/specs/man/java.html#advanced-jit-compiler-options-for-java)
 option) you'll see that luck isn't involved at all, since what is actually executed is:
 ```java
-void run() {
+long run() {
     if (stop.getPlain()) {
-        goBackToInterpreter();
+        return goBackToInterpreter();
     }
 
     var spins = 0;
@@ -250,7 +338,7 @@ void run() {
         pollForSafePoint(); // <-- https://shipilev.net/jvm/anatomy-quarks/22-safepoint-polls/
     } while (spins % 1_000_000_000 != 0);
 
-    goBackToInterpreter();
+    return goBackToInterpreter();
 }
 ```
 Let's summarize the important parts:
@@ -258,19 +346,19 @@ Let's summarize the important parts:
 * As soon as it hits the if block with the `printf`, it goes back to the interpreter.
 
 The interpreter then invokes `printf`, and then continues execution by checking the `stop` flag, which at this point is
-already `true`. Thus the loop terminates after exactly `1_000_000_000` iterations.
+already `true`. Thus, the loop terminates after exactly `1_000_000_000` iterations.
 
 So isn't JIT going a bit over the top when simply removing the check for the stop flag? Maybe in this very particular case,
 however, normally, this kind of optimization is exactly what you want, and far more
 common than you might initially think. Let me give you an example: Every time you iterate over an 
-`ArrayList` in a tight loop, using ```for (var elem : arrayList)```, you would have to pay for
+`ArrayList`, using ```for (var elem : arrayList)```, you theoretically have to pay for
 ```java
 final void checkForComodification() {
     if (modCount != expectedModCount)
         throw new ConcurrentModificationException();
 }
 ```
-again and again. This would incur a significant performance penalty if JIT wasn't
+again and again. This would incur a significant performance penalty for tight loops if JIT wasn't
 allowed to optimize this check away as long as it can prove that the loop body doesn't modify the list.
 The [Java Memory Model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-17.html#jls-17.4)
 has been specifically designed to allow these kinds of optimizations. The only reliable way to make
@@ -280,7 +368,7 @@ both reads and writes.
 
 #### Broadcasting Progress
 Another legitimate use case for opaque mode is publishing progress information in a scenario where one thread
-performs some long running task, and another thread monitors its progress. Simplified to its bare minimum,
+performs some long-running task, and another thread monitors its progress. Simplified to its bare minimum,
 it could look like this:
 ```java
 final AtomicInteger progress = new AtomicInteger(0);
