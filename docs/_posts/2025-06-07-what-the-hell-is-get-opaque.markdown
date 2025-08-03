@@ -194,7 +194,7 @@ gives me
 ```
 
 As you can see, even in this basic example, there is a tiny probability of things going south when using opaque mode to
-publish object references. Again, getting rid of the "interesting" outcome requires either sticking to X86, or to upgrade to at
+publish object references. Again, getting rid of the "interesting" outcome requires either sticking to X86, or upgrading to at
 least acquire-release mode.
 
 Having said all that, let's let's come back to valid use cases.
