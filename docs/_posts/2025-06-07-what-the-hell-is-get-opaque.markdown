@@ -4,7 +4,8 @@ title:  "What the Hell is GetOpaque in Java"
 date:   2025-08-03 08:52:34 +0200
 categories: "Java Concurrency"
 ---
-In this blog post, that can be seen as a follow-up of my last post acquire release semantics, I want to shine some light
+In this blog post, that can be seen as a follow-up of my [last post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html)
+about acquire release semantics, I want to shine some light
 on [getOpaque](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/invoke/VarHandle.html#getOpaque(java.lang.Object...))
 and [setOpaque](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/invoke/VarHandle.html#setOpaque(java.lang.Object...)).
 
