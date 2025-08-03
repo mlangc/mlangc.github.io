@@ -195,8 +195,10 @@ gives me
 ```
 
 As you can see, even in this basic example, there is a tiny probability of things going south when using opaque mode to
-publish object references. Again, getting rid of the "interesting" outcome requires either sticking to X86, or upgrading to at
-least acquire-release mode.
+publish object references. Getting rid of the "interesting" outcome requires any of
+* sticking to X86
+* upgrading to at least acquire-release mode
+* or making `x` final.
 
 Having said all that, let's let's come back to valid use cases.
 
