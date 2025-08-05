@@ -266,7 +266,7 @@ Executing this on a Google Axion ARM `c4a-highcpu-4` instance with a `corretto-2
 A similar picture can be observed on X86. Therefore, if you want to improve the performance
 of a loop like the one above, using bigger batches, and not tweaking the memory ordering, is the way to go.
 
-If you read the last paragraphs carefully, you might wounder why we couldn't use plain reads and writes, that is
+If you read the last paragraphs carefully, you might wonder why we couldn't use plain reads and writes, that is
 plain mode, at least on X86 and ARM, to broadcast a stop signal. After all, the CPU instructions used for opaque access
 on ARM and X86 are ordinary loads. However, CPU instructions only matter if they are executed, which might not be
 the case in plain mode, since JIT will optimize the check for the stop flag away if it can prove that the loop body
