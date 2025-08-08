@@ -233,6 +233,8 @@ to gain a better understanding of the performance impact implied by different ac
 The benchmark relies on the [memory ordering enum](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-2025-06-get-opaque/src/main/java/at/mlangc/concurrent/MemoryOrdering.java#L5) 
 I've introduced in [my last blog post](https://mlangc.github.io/java/concurrency/2025/05/25/volatile-vs-acq-rel.html) and looks like
 ```java
+private final AtomicBoolean stop = new AtomicBoolean();
+
 @Param({"VOLATILE", "ACQUIRE_RELEASE", "OPAQUE"})
 private MemoryOrdering memoryOrdering;
 
