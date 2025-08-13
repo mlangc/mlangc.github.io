@@ -3,6 +3,7 @@ layout: post
 title:  "Thread.sleep(0) is not for free"
 date:   2025-05-25 08:52:34 +0200
 categories: "Java Performance"
+published: false
 ---
 In this short blog post, I want to clear up a common misconception about `java.lang.Thread.sleep`.
 Calling `Thread.sleep(0)` is not for free. True, the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
