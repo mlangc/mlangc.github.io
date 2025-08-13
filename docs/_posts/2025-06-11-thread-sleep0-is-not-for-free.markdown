@@ -3,7 +3,7 @@ layout: post
 title:  "Thread.sleep(0) is not for free"
 date:   2025-05-25 08:52:34 +0200
 categories: "Java Performance"
-published: false
+published: true
 ---
 In this short blog post, I want to clear up a common misconception about `java.lang.Thread.sleep`.
 Calling `Thread.sleep(0)` is not for free. True, the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
@@ -36,11 +36,45 @@ that clearly states in [its documentation](https://man7.org/linux/man-pages/man2
 
 Indeed, with my local setup, calling `Thread.sleep(0)` is roughly as expensive as calling
 [ThreadLocalRandom.nextBytes](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/Random.html#nextBytes(byte%5B%5D))
-with `byte[128]`, according to [this JMH benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/thread-sleep0/src/jmh/java/at/mlangc/benchmarks/ThreadSleep0Benchmark.java#L14).
-Moreover, the same benchmark can be used to demonstrate that `Thread.sleep(0)` is especially expensive when you
-need it the least, that is when the CPU is already overloaded, since yielding will more likely result in context
-switches if there are many threads starving for CPU.
+with `byte[128]`, according to [this JMH benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/thread-sleep0/src/jmh/java/at/mlangc/benchmarks/ExperimentalThreadSleep0Benchmarks.java#L93).
+Moreover, `Thread.sleep(0)` is especially expensive when you need it the least, that is when the CPU is already overloaded, since
+yielding will more likely result in context switches if there are many threads starving for CPU. Let me demonstrate this using a 
+small JMH benchmark:
+```java
+@Fork(value = 1)
+@Warmup(iterations = 3, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.Throughput)
+@State(Scope.Benchmark)
+public class ThreadSleep0Benchmark {
+    @Param("85")
+    private int cpuTokens;
 
+    @Benchmark
+    public void burnCpu() {
+        Blackhole.consumeCPU(cpuTokens);
+    }
+
+    @Benchmark
+    public void burnCpuAndSleep0() throws InterruptedException {
+        Thread.sleep(0);
+        Blackhole.consumeCPU(cpuTokens);
+    }
+}
+```
+It contains two methods, both burning the same amount of CPU, however, one of them additionally calls `Thread.sleep(0)`.
+I ran both tests on my laptop, with 1, 4, 10 and 20 threads. Microsoft Copilot was so nice to assemble this graph for me 
+visualizing the results:
+
+![image showing the impact of sleep0 depending on thread count](/assets/img/2015-06-11-copilot-sleep0-bench-1vs4vs10vs20threads.png)
+
+As you can see `burnCpu` scales more or less linearly, till it plateaus at 10 threads. This makes perfect sense since my M4
+CPU has 4 performance and 6 efficiency cores.
+
+`burnCpuAndSleep0` though exhibits a very different behaviour. With 10 threads, the throughput is only slightly better than with
+4 threads, and with 20 threads, we are worse off than with 1 thread.
+
+##### Cutting a long story short: 
 In performance critical code, I therefore recommend replacing
 ```java
 Thread.sleep(someDelay);
