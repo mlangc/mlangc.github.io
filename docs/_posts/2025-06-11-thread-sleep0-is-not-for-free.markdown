@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Thread.sleep(0) is not for free"
-date:   2025-05-25 08:52:34 +0200
+date:   2025-08-14 08:52:34 +0200
 categories: "Java Performance"
 published: true
 ---
@@ -72,7 +72,7 @@ As you can see `burnCpu` scales more or less linearly, till it plateaus at 10 th
 CPU has 4 performance and 6 efficiency cores.
 
 `burnCpuAndSleep0` though exhibits a very different behaviour. With 10 threads, the throughput is only slightly better than with
-4 threads, and with 20 threads, we are worse off than with 1 thread.
+4 threads, and with 20 threads, it's worse than with 1 thread.
 
 ##### Cutting a long story short: 
 In performance critical code, I therefore recommend replacing
