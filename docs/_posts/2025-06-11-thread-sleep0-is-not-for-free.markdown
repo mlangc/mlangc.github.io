@@ -75,17 +75,20 @@ CPU has 4 performance and 6 efficiency cores.
 4 threads, and with 20 threads, it's worse than with 1 thread.
 
 ##### Cutting a long story short: 
-In performance critical code, I therefore recommend replacing
+If you have a piece of performance critical code, that under certain, very unlikely conditions employs `sleep` to
+back off, for example after an error, or in an overload situation, replace
 ```java
-Thread.sleep(someDelay);
+int delay = allGood ? 0 : waitShorty;
+Thread.sleep(delay);
 ```
 with
 ```java
-if (someDelay > 0) {
-    Thread.sleep(someDelay);
+if (!allGood) {
+    Thread.sleep(waitShortly);
 }
 ```
-unless `someDelay` is always positive. If you really rely on the undocumented `yield` implied by
+or use [TimeUnit.sleep](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/TimeUnit.html#sleep(long))
+that contains a similar, clearly documented, fast path. If you really rely on the undocumented `yield` implied by 
 `Thread.sleep(0)`, better make that explicit, by calling [Thread.yield()](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#yield())
 directly.
 
