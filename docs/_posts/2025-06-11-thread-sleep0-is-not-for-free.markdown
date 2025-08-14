@@ -68,7 +68,7 @@ visualizing the results:
 
 ![image showing the impact of sleep0 depending on thread count](/assets/img/2015-06-11-copilot-sleep0-bench-1vs4vs10vs20threads.png)
 
-As you can see `burnCpu` scales more or less linearly, till it plateaus at 10 threads. This makes perfect sense since my M4
+As you can see `burnCpu` scales more or less linearly, till it plateaus at 10 threads. This makes perfect sense since my
 CPU has 4 performance and 6 efficiency cores.
 
 `burnCpuAndSleep0` though exhibits a very different behaviour. With 10 threads, the throughput is only slightly better than with
