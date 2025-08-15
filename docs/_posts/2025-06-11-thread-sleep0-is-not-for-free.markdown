@@ -5,7 +5,7 @@ date:   2025-08-14 08:52:34 +0200
 categories: "Java Performance"
 published: true
 ---
-In this short blog post, I want to clear up a common misconception about `java.lang.Thread.sleep`.
+In this short blog post, I want to clear up a potential misconception about `java.lang.Thread.sleep`.
 Calling `Thread.sleep(0)` is not for free. True, the [official documentation](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/Thread.html#sleep(long))
 would allow a fast path for `millis == 0` that only checks the interrupted status of the current
 thread to potentially throw an [InterruptedException](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/InterruptedException.html).
