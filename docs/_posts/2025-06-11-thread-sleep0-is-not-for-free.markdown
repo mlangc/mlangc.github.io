@@ -75,8 +75,8 @@ CPU has 4 performance and 6 efficiency cores.
 4 threads, and with 20 threads, it's worse than with 1 thread.
 
 ##### Cutting a long story short: 
-If you have a piece of performance critical code, that under certain, very unlikely conditions employs `sleep` to
-back off, for example after an error, or in an overload situation, replace
+If you have a piece of code, that under certain conditions employs `sleep` to back off, for example after an error, or in an 
+overload situation, replace
 ```java
 int delay = allGood ? 0 : waitShorty;
 Thread.sleep(delay);
