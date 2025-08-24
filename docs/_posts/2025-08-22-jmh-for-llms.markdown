@@ -269,7 +269,9 @@ b.ne	0x0000000116e67724  // jumps to an uncommon call trap if the cast fails
 ```
 Thus, it's not that surprising, that these 5 instructions can add overhead, if we are doing nothing else in the loop body.
 Now, does it mean that typical Java programms are doomed to eternal slowness, due to implicit casts from the standard collectins
-library and other generic classes? Let's have a look at the benchmark from group 1:
+library and other generic classes? Let's have a look at the benchmarks from
+
+### Group 1: Copying References & Casting
 ```java
     @Benchmark
     public ArraySink group1CopyReferencesIntegerArrayList() {
@@ -330,7 +332,28 @@ However, looking at the benchmark results, the picture looks very different:
 While previously, the version without the cast was almost 3 times faster, now we are taking about an overhead of roughly 5%.
 Note that the loops in group 1 are still somewhat atypical, because the object based version of the loop, that is measured
 by `group1CopyReferencesObjectArrayList` is able to get away by only manipulating object references, whereas the implicit cast
-in `group1CopyReferencesIntegerArrayList` forces the runtime to access the referenced objects themselves. In the next group
+in `group1CopyReferencesIntegerArrayList` forces the runtime to access the referenced objects themselves. Let's move on to
+
+### Group 2: Invoking Methods & Casting
+In this group of benchmarks, `Object#hashCode` is invoked in the loop body:
+
+```java
+    @Benchmark
+    public void group2ConsumeIntegerArrayListHashCodes(Blackhole bh) {
+        for (Integer i : integerArrayList) {
+            bh.consume(i.hashCode());
+        }
+    }
+
+    @Benchmark
+    public void group2ConsumeObjectArrayListHashCodes(Blackhole bh) {
+        for (Object o : objectArrayList) {
+            bh.consume(o.hashCode());
+        }
+    }
+```
+Here are the results:
+![bar plot with benchmark results group 2](/docs/assets/img/2025-08-22-group2-consume-array-list-benchmark.png)
 
 ## Conclusion
 
