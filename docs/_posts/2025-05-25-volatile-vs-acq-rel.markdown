@@ -3,6 +3,7 @@ layout: post
 title:  "Demystifying getAcquire and setRelease in Java"
 date:   2025-05-25 08:52:34 +0200
 categories: "Java Concurrency"
+excerpt: "getAcquire and setRelease explained in depth."
 ---
 In this blog post I want to take a close look at the subtle difference between using 
 * [getAcquire](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/invoke/VarHandle.html#getAcquire(java.lang.Object...)) with
