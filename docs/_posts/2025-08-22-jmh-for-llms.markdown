@@ -3,6 +3,7 @@ layout: post
 title: "JMH for LLMs"
 date: 2025-08-22 07:08:09 +0200
 categories: "Java Performance"
+excerpt: "How I used JMH to measure LLM & Java casting performance at the same time"
 published: true
 ---
 
@@ -21,17 +22,19 @@ Thus, I decided to run a competition between different models, which me being th
 start with the following prompt:
 
 > I know that casts in Java are pretty cheap, since JVM implementations go at great lengths to make them as performant
-> as possible. Still, even cheap operations might add up, if executed in large enough numbers. Given the fact that Java
+> as possible. However, even cheap operations add up when executed in large enough numbers. Because Java
 > collections are operating on plain `Object` references, with implicit casts being inserted by the compiler as needed,
-> typical Java programs contain far more casts than meets the eye. So, to make this more concrete, I'm wondering how much casting
+> typical Java programs contain far more casts than meets the eye. 
+> 
+> To make this more concrete, I'm wondering how much casting
 > overhead is involved when iterating over an `ArrayList<Integer>`. Is it always negligible, or can it have a significant impact
 > in tight loops?
 >
-> Please don't answer my questions directly: Instead, I would like you to generate a JMH benchmark class, that shines some light
-> on this topic. The benchmark should be small and finish in less than 1 minute. Adding some comments to the source code as to
-> how to interpret the results would be a bonus, but please try to be verbose. Also, please restrict your answer to the JMH
-> benchmark class and note that I don't need instructions about how to run it. I will execute the benchmark, and send you the
-> results, so that we can look into it together.
+> **Please don't answer my questions directly.** Instead, I would like you to generate a JMH benchmark class to shed some light
+> on this topic. The benchmark should be small and finish in less than a minute. Adding some comments to the source code to
+> help interpret the results would be a bonus, but please be concise. Also, please restrict your answer to the JMH
+> benchmark class only; I don't need instructions on how to run it. I'll execute the benchmark and share the
+> results so we can analyze them together.
 
 I would then run the benchmark, and respond with
 
@@ -40,8 +43,8 @@ I would then run the benchmark, and respond with
 > ${JMH results table}
 >
 > Would you like to refine the benchmark? If you think that the numbers make sense,
-> and the benchmark should stay as is, please just answer with no. Otherwise, please restrict your answer to an updated
-> JMH benchmark class that I should run instead.
+> and the benchmark should stay as is, please just answer with "no". Otherwise, please provide an updated
+> JMH benchmark class for me to run.
 
 After that I would end the conversation, and discuss potential problems in the generated benchmarks. Last but not least, I will
 give a score out of `{0, 1, 2}` with
