@@ -24,8 +24,8 @@ start with the following prompt:
 > I know that casts in Java are pretty cheap, since JVM implementations go at great lengths to make them as performant
 > as possible. However, even cheap operations add up when executed in large enough numbers. Because Java
 > collections are operating on plain `Object` references, with implicit casts being inserted by the compiler as needed,
-> typical Java programs contain far more casts than meets the eye. 
-> 
+> typical Java programs contain far more casts than meets the eye.
+>
 > To make this more concrete, I'm wondering how much casting
 > overhead is involved when iterating over an `ArrayList<Integer>`. Is it always negligible, or can it have a significant impact
 > in tight loops?
@@ -66,14 +66,256 @@ for any model, at least if you don't wait for too long, because it's only a matt
 article in one way or another. So without further ado, here are the participants:
 
 * Microsoft Copilot using `Smart (GPT-5)` mode
+* Microsoft Copilot using `Think Deeper` mode
 * Google Gemini 2.5 Pro
 * deepseek V3 using `DeepThink` mode
 
 ## The Competition
 
-### Microsoft Copilot
+The following sections describe and discuss the interactions I had with the participating models on the 29th of August 2025, one
+by one. Each of them will be concluded with a score as outlined above.
+
+### Microsoft Copilot Smart (GPT-5)
+
+Here is the benchmark proposed by Copilot in Smart (GPT-5) mode:
+
+```java
+/**
+ * Benchmark to measure potential overhead of casting when iterating over ArrayList<Integer>.
+ *
+ * - baseline(): uses primitive int[] (no boxing/unboxing, no casting)
+ * - implicitCast(): iterates over ArrayList<Integer> with implicit casts from Object
+ * - explicitCast(): same as implicitCast but with an explicit (Integer) cast
+ *
+ * If implicitCast and explicitCast are slower than baseline, the difference may be due to
+ * casting, boxing/unboxing, or both. The gap between implicitCast and explicitCast isolates
+ * the cost of the explicit cast itself.
+ */
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@State(Scope.Thread)
+public class CastOverheadBenchmark {
+
+    private static final int SIZE = 1_000;
+    private List<Integer> list;
+    private int[] array;
+
+    @Setup
+    public void setup() {
+        list = new ArrayList<>(SIZE);
+        array = new int[SIZE];
+        for (int i = 0; i < SIZE; i++) {
+            list.add(i);
+            array[i] = i;
+        }
+    }
+
+    @Benchmark
+    public int baseline() {
+        int sum = 0;
+        for (int v : array) {
+            sum += v;
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int implicitCast() {
+        int sum = 0;
+        for (Integer v : list) { // implicit cast from Object to Integer
+            sum += v;
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public int explicitCast() {
+        int sum = 0;
+        for (Object o : list) {
+            sum += (Integer) o; // explicit cast
+        }
+        return sum;
+    }
+}
+```
+
+After the benchmark class, Copilot concluded, amongst other thins, with
+> This should complete well under a minute with default JMH settings.
+
+In reality, one of the first things that met my attention after starting the benchmark was `ETA 00:25:00` being written to my
+console. Since I didn't want to wait, I added
+
+```java
+@Fork(1)
+@Warmup(iterations = 3, time = 100, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 10, time = 200, timeUnit = TimeUnit.MILLISECONDS)
+```
+
+and soon had results like
+![Copilot GPT5 benchmark results](/assets/img/2025-08-22-copilot-gpt5-benchmark.png)
+
+Since Copilot didn't want to refine the benchmark after the second prompt, let me discuss the benchmark, and what these numbers
+actually tell us.
+
+As you can see, `explicitCast` and `implicitCast` have more or less the same execution speeds. Everything else would be very
+surprising, since both methods, at the bytecode level, iterate over a list of objects, that are then cast and summed up as
+integers. Weather the cast appears explicitly in the source code, or is added implicitly by the compiler, doesn't matter to the
+CPU executing the instructions at all. It also doesn't matter to anybody wanting to learn about the performance implications of
+casting.
+
+The fact that `basline` outperforms the other two methods by a significant margin, doesn't tell us very much about casting either,
+since there are too many factors that might contribute to the difference with different weights:
+
+* Fewer indirections & better memory locality because plain ints are used.
+* Fewer indirections, because the array is accessed directly, and not via a `List` object.
+* No casting.
+
+Concluding, my score is therefore `0`.
+
+### Microsoft Copilot (Think Deeper)
+
+Interestingly, Copilot in "Think Deeper" mode did only slightly better, insofar as the generated benchmark had an acceptable
+running time from the start, and the benchmark itself was reduced to
+
+```java
+    /**
+ * Pure primitive loop: no casts or object indirection.
+ */
+@Benchmark
+public long sumArray(Data data) {
+    long sum = 0;
+    int[] a = data.array;
+    for (int i = 0; i < a.length; i++) {
+        sum += a[i];
+    }
+    return sum;
+}
+
+/**
+ * Boxed loop: each get() does a CHECKCAST to Integer, then auto-unboxes.
+ */
+@Benchmark
+public long sumList(Data data) {
+    long sum = 0;
+    List<Integer> l = data.list;
+    for (int i = 0, n = l.size(); i < n; i++) {
+        sum += l.get(i);
+    }
+    return sum;
+}
+```
+
+We just discussed why comparing the performance of `sumArray` to `sumList` isn't particularly helpful if you want to understand
+the overhead implied by casting in loops iterating over lists. Despite the deeper thinking, my score is `0` once again.
 
 ### Google Gemini 2.5 Pro
+
+Gemini 2.5 is the only model, that mode use of it's second chance. Let me therefore jump straight to the 2nd JMH benchmark class
+it generated for me during this experiment:
+
+```java
+
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@State(Scope.Benchmark)
+@Fork(value = 1, warmups = 1)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 5, time = 1)
+public class CastingBenchmark {
+
+    @Param({"1000"})
+    private int size;
+
+    private ArrayList<Integer> arrayList;
+    private Integer[] integerArray;
+    private Object[] objectArray;
+    private int[] primitiveArray;
+
+    @Setup
+    public void setup() {
+        Random random = new Random(1234);
+        arrayList = new ArrayList<>(size);
+        integerArray = new Integer[size];
+        objectArray = new Object[size];
+        primitiveArray = new int[size];
+
+        for (int i = 0; i < size; i++) {
+            int value = random.nextInt();
+            Integer integerValue = value; // Box once
+            arrayList.add(integerValue);
+            integerArray[i] = integerValue;
+            objectArray[i] = integerValue;
+            primitiveArray[i] = value;
+        }
+    }
+
+    /**
+     * Baseline: Iterates over a primitive int array.
+     * No objects, no casting, no unboxing. This is the theoretical best-case scenario.
+     */
+    @Benchmark
+    public int sumPrimitiveArray() {
+        int sum = 0;
+        for (int i : primitiveArray) {
+            sum += i;
+        }
+        return sum;
+    }
+
+    /**
+     * Iterates over an Integer[] array.
+     * This involves object access and unboxing for each element, but no type casting,
+     * as the array's type is already known to be Integer[].
+     */
+    @Benchmark
+    public int sumIntegerArray() {
+        int sum = 0;
+        for (Integer i : integerArray) {
+            sum += i;
+        }
+        return sum;
+    }
+
+    /**
+     * Iterates over an Object[] array known to contain Integers.
+     * This requires an explicit (or in a for-each loop, implicit) cast and then unboxing.
+     * This is very similar to ArrayList's internal behavior but without the get() method call overhead.
+     */
+    @Benchmark
+    public int sumObjectArrayWithCast() {
+        int sum = 0;
+        for (Object o : objectArray) {
+            sum += (Integer) o;
+        }
+        return sum;
+    }
+
+    /**
+     * The original test: iterates over an ArrayList<Integer>.
+     * This involves the list's get() method call, a type cast, and unboxing.
+     * This measures the performance of a typical generic collection loop.
+     */
+    @Benchmark
+    public int sumArrayList() {
+        int sum = 0;
+        for (Integer i : arrayList) {
+            sum += i;
+        }
+        return sum;
+    }
+}
+```
+
+Summarizing, this benchmark compares summing over `int[]`, `Integer[]`, `Object[]` and `List<Integer>`. It took around 2 minutes
+to execute on my laptop, which is somewhat longer then the minute asked for in the prompt, but still tolerable. If you arrange the
+results from fastest to slowest, like below
+![Gemini Benchmark Results](/assets/img/2025-08-22-gemini-benchmark.png)
+you can see, how starting from the performance of `int[]`, we finally end up at the performance of `ArrayList<Integer>`, in steps.
+In the first step, we transition from `int` to `Integer`, and add a boxing overhead. Then we go from `Integer[]` to `Object[]`
+and add a casting overhead. And finally we add one more indirection, and move from `Object[]` to `ArrayList<Integer>`. Concluding,
+we can say that if all you do is summing up numbers, the casting overhead involved when iterating over an
+`ArrayList<Integer>` is somewhere in the range of 10%. Though, as we shall later see, much more can be said about this topic,
+I would consider this benchmark a reasonable first attempt in the right direction, and give Gemini a score of `1`.
 
 ### deepseek V3
 
