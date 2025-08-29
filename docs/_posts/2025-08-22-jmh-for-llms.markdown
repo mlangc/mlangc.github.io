@@ -30,7 +30,7 @@ start with the following prompt:
 > overhead is involved when iterating over an `ArrayList<Integer>`. Is it always negligible, or can it have a significant impact
 > in tight loops?
 >
-> **Please don't answer my questions directly.** Instead, I would like you to generate a JMH benchmark class to shed some light
+> Please don't answer my questions directly. Instead, I would like you to generate a JMH benchmark class to shed some light
 > on this topic. The benchmark should be small and finish in less than a minute. Adding some comments to the source code to
 > help interpret the results would be a bonus, but please be concise. Also, please restrict your answer to the JMH
 > benchmark class only; I don't need instructions on how to run it. I'll execute the benchmark and share the
@@ -38,13 +38,13 @@ start with the following prompt:
 
 I would then run the benchmark, and respond with
 
-> Thanks, here are the results of the benchmark:
+> Thanks. Here are the results of the benchmark:
 >
 > ${JMH results table}
 >
-> Would you like to refine the benchmark? If you think that the numbers make sense,
-> and the benchmark should stay as is, please just answer with "no". Otherwise, please provide an updated
-> JMH benchmark class for me to run.
+> Would you like to refine the benchmark? If you think that the numbers look reasonable,
+> and the benchmark should remain as is, please reply with "no". Otherwise, please provide an updated
+> JMH benchmark class.
 
 After that I would end the conversation, and discuss potential problems in the generated benchmarks. Last but not least, I will
 give a score out of `{0, 1, 2}` with
