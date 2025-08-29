@@ -1,0 +1,9 @@
+Thanks. Here are the results of the benchmark:
+
+"
+Benchmark                            (size)  Mode  Cnt    Score    Error  Units
+GeminiSubmission1.sumArrayList         1000  avgt    5  283,474 ± 19,943  ns/op
+GeminiSubmission1.sumPrimitiveArray    1000  avgt    5  216,962 ±  2,813  ns/op
+"
+
+Would you like to refine the benchmark? If you think that the numbers look reasonable, and the benchmark should remain as is, please reply with "no". Otherwise, please provide an updated JMH benchmark class.
