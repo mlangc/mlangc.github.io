@@ -11,10 +11,10 @@ published: true
 
 I recently had a conversation about Java casting performance with Microsoft Copilot, mostly to test the model, but also open to
 learning something new. Very soon, Copilot suggested to generate a JMH benchmark for me, and being curious, I agreed. What
-followed was very interesting, because it became clear pretty quickly, that I had overstretched the capabilities of the model
-significantly. This inspired the following idea: While JMH benchmarks are typically used to measure runtimes of Java code
-snippets, why not use it differently, by comparing the ability of different LLMs to create JMH benchmarks to answer subtle
-performance related questions.
+followed was very interesting, because it became clear pretty quickly, that I had overstretched the capabilities of the model.
+This inspired the following idea: While JMH benchmarks are typically used to measure runtimes of Java code snippets, why not use
+them differently, by comparing the ability of different LLMs to create JMH benchmarks to answer subtle performance related
+questions.
 
 ## The Rules
 
@@ -60,15 +60,17 @@ benchmark code to discuss.
 
 ## The Participants
 
-The next problem is choosing the participants. Again, due to resource constraints, I want to limit myself to 3 models, thus it's
+The next problem is choosing the participants. Again, due to resource constraints, I want to limit myself to 4 models, thus it's
 very likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I just did
 for any model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this
-article in one way or another. So without further ado, here are the participants:
+article in one way or another. Here are the participants:
 
 * Microsoft Copilot using `Smart (GPT-5)` mode
 * Microsoft Copilot using `Think Deeper` mode
 * Google Gemini 2.5 Pro
 * deepseek V3 using `DeepThink` mode
+
+All of them are directly accessible and don't require specific subscriptions.
 
 ## The Competition
 
@@ -142,7 +144,7 @@ public class CastOverheadBenchmark {
 After the benchmark class, Copilot concluded, amongst other thins, with
 > This should complete well under a minute with default JMH settings.
 
-In reality, one of the first things that met my attention after starting the benchmark was `ETA 00:25:00` being written to my
+In reality, one of the first things that caught my attention after starting the benchmark was `ETA 00:25:00` being written to the
 console. Since I didn't want to wait, I added
 
 ```java
@@ -154,23 +156,22 @@ console. Since I didn't want to wait, I added
 and soon had results like
 ![Copilot GPT5 benchmark results](/assets/img/2025-08-22-copilot-gpt5-benchmark.png)
 
-Since Copilot didn't want to refine the benchmark after the second prompt, let me discuss the benchmark, and what these numbers
+Since Copilot didn't want to refine the benchmark after the second prompt, let me discuss the code, and what these numbers
 actually tell us.
 
 As you can see, `explicitCast` and `implicitCast` have more or less the same execution speeds. Everything else would be very
 surprising, since both methods, at the bytecode level, iterate over a list of objects, that are then cast and summed up as
-integers. Weather the cast appears explicitly in the source code, or is added implicitly by the compiler, doesn't matter to the
-CPU executing the instructions at all. It also doesn't matter to anybody wanting to learn about the performance implications of
-casting.
+integers. Weather the casts appears explicitly in the source code, or are added implicitly by the compiler, doesn't matter to the
+CPU executing the instructions. It also doesn't matter to anybody wanting to learn about the performance implications of casting.
 
-The fact that `basline` outperforms the other two methods by a significant margin, doesn't tell us very much about casting either,
-since there are too many factors that might contribute to the difference with different weights:
+The fact that `basline`, which operates on `int[]` outperforms the other two methods by a significant margin, doesn't tell us very
+much about casting either, since there are too many factors that contribute to the difference:
 
-* Fewer indirections & better memory locality because plain ints are used.
+* Fewer indirections & better memory locality for `int[]`.
 * Fewer indirections, because the array is accessed directly, and not via a `List` object.
 * No casting.
 
-Concluding, my score is therefore `0`.
+Therefore, I'm concluding with a score of `0`.
 
 ### Microsoft Copilot (Think Deeper)
 
@@ -206,12 +207,13 @@ public long sumList(Data data) {
 ```
 
 We just discussed why comparing the performance of `sumArray` to `sumList` isn't particularly helpful if you want to understand
-the overhead implied by casting in loops iterating over lists. Despite the deeper thinking, my score is `0` once again.
+the overhead implied by casting in loops iterating over lists. My score is `0` once again.
 
 ### Google Gemini 2.5 Pro
 
-Gemini 2.5 is the only model, that mode use of it's second chance. Let me therefore jump straight to the 2nd JMH benchmark class
-it generated for me during this experiment:
+Gemini 2.5 is the only model that made use of it's second chance. While the first submission just compared summing up `int[]`
+with a sum over an `ArrayList<Integer>`, very much like the benchmark we just discussed, the refined version the model generated
+looks different:
 
 ```java
 
@@ -307,25 +309,99 @@ public class CastingBenchmark {
 ```
 
 Summarizing, this benchmark compares summing over `int[]`, `Integer[]`, `Object[]` and `List<Integer>`. It took around 2 minutes
-to execute on my laptop, which is somewhat longer then the minute asked for in the prompt, but still tolerable. If you arrange the
-results from fastest to slowest, like below
+to execute on my laptop, which is somewhat longer then the minute asked for in the prompt, but still tolerable, even for somebody
+as impatient as me. If you arrange the results from fastest to slowest, like below
 ![Gemini Benchmark Results](/assets/img/2025-08-22-gemini-benchmark.png)
 you can see, how starting from the performance of `int[]`, we finally end up at the performance of `ArrayList<Integer>`, in steps.
 In the first step, we transition from `int` to `Integer`, and add a boxing overhead. Then we go from `Integer[]` to `Object[]`
 and add a casting overhead. And finally we add one more indirection, and move from `Object[]` to `ArrayList<Integer>`. Concluding,
 we can say that if all you do is summing up numbers, the casting overhead involved when iterating over an
-`ArrayList<Integer>` is somewhere in the range of 10%. Though, as we shall later see, much more can be said about this topic,
-I would consider this benchmark a reasonable first attempt in the right direction, and give Gemini a score of `1`.
+`ArrayList<Integer>` is somewhere in the range of 10%. Though, as we shall later see, much more can be said about this topic, I
+would consider this benchmark a reasonable first attempt in the right direction, and give Gemini a score of `1`.
 
 ### deepseek V3
 
+The benchmark generated by deepsek V3 is similar to the one generated by Gemini, though incomplete: It compares summation of
+`Integer[]` with summation of an `ArrayList<Integer>` and looks like:
+
+```java
+
+@State(Scope.Thread)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@BenchmarkMode(Mode.AverageTime)
+@Warmup(iterations = 3, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+public class ArrayListCastBenchmark {
+
+    private ArrayList<Integer> arrayList;
+    private Integer[] array;
+
+    @Setup
+    public void setup() {
+        int size = 10000;
+        arrayList = new ArrayList<>(size);
+        array = new Integer[size];
+        for (int i = 0; i < size; i++) {
+            arrayList.add(i);
+            array[i] = i;
+        }
+    }
+
+    // Baseline: Iterate over pre-cast Integer array (no casts in loop)
+    @Benchmark
+    public long baselineArray() {
+        long sum = 0;
+        for (Integer integer : array) {
+            sum += integer;
+        }
+        return sum;
+    }
+
+    // Tests ArrayList iteration with implicit casts in get()
+    @Benchmark
+    public long arrayListGet() {
+        long sum = 0;
+        for (int i = 0; i < arrayList.size(); i++) {
+            sum += arrayList.get(i);  // Includes cast from Object to Integer
+        }
+        return sum;
+    }
+
+    // Tests ArrayList iteration with iterator (implicit casts in next())
+    @Benchmark
+    public long arrayListForEach() {
+        long sum = 0;
+        for (Integer integer : arrayList) {  // Includes cast in iterator.next()
+            sum += integer;
+        }
+        return sum;
+    }
+}
+```
+
+The model decided to stay with this benchmark, after having received the results. As we saw while discussing the submission by
+Gemini, going from `Integer[]` to `ArrayList<Integer>` not only adds a casting overhead, but potentially also an indirection
+overhead. Since this benchmark doesn't explicitly check `Object[]`, it's hard to tell which parts of the performance degradation
+that can be observed when moving from `Integer[]` to `ArrayList<Integer>` should be attributed to casting. Therefore, I'm
+concluding with a score of `0`, though it's a close call, and the response is definitely better than the code which has been
+provided by Copilot.
+
+### Summary & Winner
+
+The clear winner of this contest is `Google Gemini 2.5 Pro`, since it's the only model, that provided a benchmark that actually
+can be used to derive some information about the casting overhead that one pays while iterating over an `ArrayList<Integer>`. The
+benchmarks provided by `Microsoft Copilot` compared `int[]` with `ArrayList<Integer>` which is interesting as well, but wasn't
+what the prompt asked for. `deepseek V3` would have won if only one response was allowed, but was then outperformed by Gemini,
+which used the opportunity to refine it's relatively weak first attempt.
+
+Regardless of their score, each of these models is an extremely impressive piece of technology.
+
 ## My Benchmark to answer the Prompt
 
-Before drawing any conclusions about the strengths and limits of current LLMs, let me give you my take on an answer to the
-aforementioned prompt. Please note that I'm not pretending to be a participant, not only because I'm already acting as the
-referee, but also since I spent hours digging though benchmark results, profiler output and generated assembler code, before
-wrapping up my results, and presenting them to you. Here is the benchmark class that I finally came up with after hours and hours
-of tinkering:
+Before wrapping things up, let me give you my take on an answer to the aforementioned prompt. Please note that I'm not pretending
+to be a participant, not only because I'm already acting as the referee, but also since I spent hours digging though benchmark
+results, profiler output and generated assembler code, before wrapping up my results, and presenting them to you. Here is the
+benchmark class that I finally came up with after hours and hours of tinkering:
 
 ```java
 /**
@@ -337,9 +413,9 @@ of tinkering:
  * incurred by implicit casts. Here is a brief summary of the different groups:
  *
  *     <ul>
- *         <li>group0 compares reading a reference to reading and an implicit cast</li>
- *         <li>group1 compares copying a reference to copying and an implicit cast</li>
- *         <li>group2 compares calling hashCode to calling hashCode and an implicit cast</li>
+ *         <li>group0 compares reading a reference to reading and an implicit cast, while iterating</li>
+ *         <li>group1 compares copying a reference to copying and an implicit cast, while iterating</li>
+ *         <li>group2 compares calling hashCode to calling hashCode and an implicit cast, while iterating</li>
  *         <li>group3 does the same as group2, but iterates over <code>Object[]</code> and <code>Integer[]</code></li>
  *     </ul>
  * </p>
@@ -499,7 +575,7 @@ objects, and the second one as `Integer` objects. If you look into the Java byte
 confirm that they are identical, except for a single `CHECKCAST java/lang/Integer` instruction, that appears only in
 `group0ConsumeIntegerArrayList` but not in `group0ConsumeObjectArrayList`. Since nothing else is happening in the loop, comparing
 the results of these two benchmarks shows us how much casting costs compared to iteration and the costs implied by the `Blackhole`
-implementation. Here is a plot generated by the courtesy of Microsoft Copilot with the results from my Apple M4 laptop using
+implementation. Here is a plot generated by the courtesy of Microsoft Copilot with the results from my laptop using
 `OpenJDK 64-Bit Server VM, 24.0.2`:
 
 ![bar plot with benchmark results group 0](/assets/img/2025-08-22-group0-consume-array-list-benchmark.png)
@@ -609,9 +685,9 @@ Here are the results:
 
 ![bar plot with benchmark results group 2](/assets/img/2025-08-22-group2-consume-array-list-benchmark.png)
 
-This time, there is no significant difference between the two versions. To avoid a virtual function call and enable inlining, even
-the JIT generated code for `group2ConsumeObjectArrayListHashCodes` contains a check for `Integer`, which explains why both
-functions have the same runtime.
+This time, there is no significant difference between the two versions. To avoid a virtual function call and enable inlining, JIT
+inserts a check for `Integer` even into the `Object` based version of the loop, which explains why both methods have essentially
+the same running time.
 
 Can we therefore conclude that casting overhead doesn't matter if the involved objects are accessed even in the most trivial way?
 Let's have a look at the final
@@ -651,13 +727,26 @@ hinted at by differences in the Java byte code. In `group3ConsumeIntegerArrayHas
 `INVOKEVIRTUAL java/lang/Integer.hashCode ()I`. Since `Integer` is a final class, this call can be inlined without additional type
 checks. `group3ConsumeObjectArrayHashCodes` though contains
 `INVOKEVIRTUAL java/lang/Object.hashCode ()I`, and the inlining cannot proceed without inserting type checks that make sure that
-we are actually dealing with integers.
+we are actually dealing with `Integer` instances.
 
 ### Are Casts now Cheap or What?
 
 Unfortunately, the answer is both yes and no. While typically negligible, implicit casts implied by Java collection usage can add
 significant overhead, if loop bodies are short, and reified types would allow for inlining without additional runtime type checks.
 
-## Conclusion
+## Wrapping Up
+
+The capabilities of modern LLMs are impressive, and they can be a very useful tool for a variety of problems, especially when
+their output can be easily validated, or errors are cheap. If any of these conditions is not met, they are far less useful though,
+at least unless there is another break-though.
+
+Writing JMH benchmarks is definitely not something where it pays off to consult an LLM for me. Even if I got the perfect answer,
+validating and understanding the answer would probably take at least as much time as doing everything on my own in the first
+place.
+
+
+
+
+
 
 
