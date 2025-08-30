@@ -741,8 +741,8 @@ their output can be easily validated, or errors are cheap. If any of these condi
 at least unless there is another break-though.
 
 Writing JMH benchmarks is definitely not something where it pays off to consult an LLM for me. Even if I got the perfect answer,
-validating and understanding the answer would probably take at least as much time as doing everything on my own in the first
-place.
+validating and understanding the implications of the benchmark would probably take at least as much time as doing everything on my
+own in the first place.
 
 
 
