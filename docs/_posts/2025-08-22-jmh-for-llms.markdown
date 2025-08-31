@@ -55,27 +55,26 @@ give a score out of `{0, 1, 2}` with
 
 This score will be mostly affected by the second attempt of the model, if there is one, since this iterative approach also most
 closely resembles how humans write benchmarks. I could of course give the models multiple chances to refine their benchmarks, but
-I decided to stop after one iteration, since I'm doing this alone, and want to limit the scope of this article and the amount of
-benchmark code to discuss.
+I decided to stop after one iteration, to keep the scope limited.
 
 ## The Participants
 
-The next problem is choosing the participants. Again, due to resource constraints, I want to limit myself to 4 models, thus it's
+The next problem is choosing the participants. Due to resource constraints, I want to limit myself to 4 models, thus it's
 very likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I just did
 for any model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this
-article in one way or another. Here are the participants:
+article in one way or another. Here are the participating LLMs:
 
 * Microsoft Copilot using `Smart (GPT-5)` mode
 * Microsoft Copilot using `Think Deeper` mode
 * Google Gemini 2.5 Pro
 * deepseek V3 using `DeepThink` mode
 
-All of them are directly accessible and don't require specific subscriptions.
+All of them are accessible without paid subscriptions.
 
 ## The Competition
 
 The following sections describe and discuss the interactions I had with the participating models on the 29th of August 2025, one
-by one. Each of them will be concluded with a score as outlined above.
+by one. Each of them will be concluded with a score as outlined above. The full interaction protocol can be found [here](todo).
 
 ### Microsoft Copilot Smart (GPT-5)
 
@@ -141,7 +140,7 @@ public class CastOverheadBenchmark {
 }
 ```
 
-After the benchmark class, Copilot concluded, amongst other thins, with
+After the benchmark class, Copilot concluded, amongst other remarks, with
 > This should complete well under a minute with default JMH settings.
 
 In reality, one of the first things that caught my attention after starting the benchmark was `ETA 00:25:00` being written to the
@@ -161,7 +160,7 @@ actually tell us.
 
 As you can see, `explicitCast` and `implicitCast` have more or less the same execution speeds. Everything else would be very
 surprising, since both methods, at the bytecode level, iterate over a list of objects, that are then cast and summed up as
-integers. Weather the casts appears explicitly in the source code, or are added implicitly by the compiler, doesn't matter to the
+integers. Weather the casts appear explicitly in the source code, or are added implicitly by the compiler, doesn't matter to the
 CPU executing the instructions. It also doesn't matter to anybody wanting to learn about the performance implications of casting.
 
 The fact that `basline`, which operates on `int[]` outperforms the other two methods by a significant margin, doesn't tell us very
@@ -175,9 +174,11 @@ Therefore, I'm concluding with a score of `0`.
 
 ### Microsoft Copilot (Think Deeper)
 
-Interestingly, Copilot in "Think Deeper" mode did only slightly better, insofar as the generated benchmark had an acceptable
-running time from the start, and the benchmark itself was reduced to
+Copilot in "Think Deeper" mode did somewhat better:
+* The generated benchmark had an acceptable ETA from the start. 
+* The useless performance comparison between "explicit" and "implicit" casts was removed.
 
+What remained, was a comparison between summing over `int[]` and `ArrayList<Integer>`, that we already discussed above:
 ```java
     /**
  * Pure primitive loop: no casts or object indirection.
@@ -205,9 +206,7 @@ public long sumList(Data data) {
     return sum;
 }
 ```
-
-We just discussed why comparing the performance of `sumArray` to `sumList` isn't particularly helpful if you want to understand
-the overhead implied by casting in loops iterating over lists. My score is `0` once again.
+Since the model stayed with this benchmark, even after having given the chance to refine it, my score is `0` once again.
 
 ### Google Gemini 2.5 Pro
 
@@ -383,8 +382,7 @@ The model decided to stay with this benchmark, after having received the results
 Gemini, going from `Integer[]` to `ArrayList<Integer>` not only adds a casting overhead, but potentially also an indirection
 overhead. Since this benchmark doesn't explicitly check `Object[]`, it's hard to tell which parts of the performance degradation
 that can be observed when moving from `Integer[]` to `ArrayList<Integer>` should be attributed to casting. Therefore, I'm
-concluding with a score of `0`, though it's a close call, and the response is definitely better than the code which has been
-provided by Copilot.
+concluding with a score of `0`, though it's a close call.
 
 ### Summary & Winner
 
@@ -736,13 +734,13 @@ significant overhead, if loop bodies are short, and reified types would allow fo
 
 ## Wrapping Up
 
-The capabilities of modern LLMs are impressive, and they can be a very useful tool for a variety of problems, especially when
+The capabilities of modern LLMs are impressive, and they can be a very useful tool for a variety of situations, especially when
 their output can be easily validated, or errors are cheap. If any of these conditions is not met, they are far less useful though,
 at least unless there is another break-though.
 
 Writing JMH benchmarks is definitely not something where it pays off to consult an LLM for me. Even if I got the perfect answer,
 validating and understanding the implications of the benchmark would probably take at least as much time as doing everything on my
-own in the first place.
+own.
 
 
 
