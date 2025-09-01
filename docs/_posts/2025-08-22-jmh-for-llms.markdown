@@ -11,12 +11,11 @@ published: true
 
 I recently had a conversation about Java casting performance with Microsoft Copilot, mostly to test the model, but also open to
 learning something new. Very soon, Copilot suggested to generate a JMH benchmark for me, and being curious, I agreed. What
-followed was very interesting, because it became clear pretty quickly, that I had overstretched the capabilities of the model.
-This inspired the following idea: While JMH benchmarks are typically used to measure runtimes of Java code snippets, why not use
-them differently, by comparing the ability of different LLMs to create JMH benchmarks to answer subtle performance related
-questions.
+followed sparked my interest, because it became clear pretty quickly, that I had overstretched the capabilities of the model. This
+inspired the following idea: While JMH benchmarks are typically used to measure runtimes of Java code snippets, why not use them
+differently, by comparing the ability of LLMs to create JMH benchmarks to answer subtle performance related questions?
 
-## The Rules
+## The Game
 
 Thus, I decided to run a competition between different models, which me being the referee. The conversation with each model would
 start with the following prompt:
@@ -46,8 +45,8 @@ I would then run the benchmark, and respond with
 > and the benchmark should remain as is, please reply with "no". Otherwise, please provide an updated
 > JMH benchmark class.
 
-After that I would end the conversation, and discuss potential problems in the generated benchmarks. Last but not least, I will
-give a score out of `{0, 1, 2}` with
+After that I would end the conversation, and discuss potential problems in the generated benchmarks, concluding with a score out
+of `{0, 1, 2}` with
 
 * `0` meaning useless, or even misleading
 * `1` meaning OK, though there is room for improvement
@@ -59,10 +58,10 @@ I decided to stop after one iteration, to keep the scope limited.
 
 ## The Participants
 
-The next problem is choosing the participants. Due to resource constraints, I want to limit myself to 4 models, thus it's very
-likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I just did for
-any model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this article
-in one way or another. Here are the participating LLMs:
+The next problem was choosing the participants. Due to resource constraints, I wanted to limit myself to 4 models, thus it's very
+likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I did for any
+model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this article in
+one way or another. Here are the participating LLMs:
 
 * Microsoft Copilot using `Smart (GPT-5)` mode
 * Microsoft Copilot using `Think Deeper` mode
@@ -74,7 +73,8 @@ All of them are accessible without paid subscriptions.
 ## The Competition
 
 The following sections describe and discuss the interactions I had with the participating models on the 29th of August 2025, one
-by one. Each of them will be concluded with a score as outlined above. The full interaction protocol can be found [here](todo).
+by one. Each of them will be concluded with a score as outlined above. The full interaction protocol can be
+found [here](https://github.com/mlangc/mlangc.github.io/tree/develop/docs/assets/misc).
 
 ### Microsoft Copilot Smart (GPT-5)
 
@@ -399,10 +399,9 @@ Regardless of their score, each of these models is an extremely impressive piece
 
 ## My Benchmark to answer the Prompt
 
-Before wrapping things up, let me give you my take on an answer to the aforementioned prompt. Please note that I'm not pretending
-to be a participant, not only because I'm already acting as the referee, but also since I spent hours digging though benchmark
-results, profiler output and generated assembler code, before wrapping up my results, and presenting them to you. Here is the
-benchmark class that I finally came up with after hours and hours of tinkering:
+Before wrapping things up, let me give you my take on an answer to the aforementioned prompt. Note that I spent hours digging
+though benchmark results, profiler output and generated assembler code, before wrapping up my results, and presenting them to you.
+Here is the benchmark class that I finally came up with after lots of tinkering:
 
 ```java
 /**
@@ -741,10 +740,13 @@ The capabilities of modern LLMs are impressive, and they can be a very useful to
 their output can be easily validated, or errors are cheap. If any of these conditions is not met, they are far less useful though,
 at least unless there is another break-though.
 
-In the context of benchmarking, LLMs have helped me quite a bit when digging though JIT generated assembly, or for plot
-generation, though [jmh-visualizer](https://github.com/jzillmann/jmh-visualizer) is typically good enough. Designing and writing
-micro-benchmarks though is definitely not something that I'd leave to an LLM. Even if I got the perfect answer, the actual work is
-anyway validating and understanding its implications.
+In the context of benchmarking, LLMs have helped me quite a bit when digging through JIT generated assembly, or for plot
+generation[^1]. Designing and writing micro-benchmarks though is definitely not something that I'd leave to an LLM. Even if I got
+the perfect JMH benchmark, the actual work is anyway validating and understanding its implications.
+
+###### Footnotes
+
+[^1]: Normally I use [jmh-visualizer](https://github.com/jzillmann/jmh-visualizer).
 
 
 
