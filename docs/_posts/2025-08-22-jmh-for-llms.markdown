@@ -59,10 +59,10 @@ I decided to stop after one iteration, to keep the scope limited.
 
 ## The Participants
 
-The next problem is choosing the participants. Due to resource constraints, I want to limit myself to 4 models, thus it's
-very likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I just did
-for any model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this
-article in one way or another. Here are the participating LLMs:
+The next problem is choosing the participants. Due to resource constraints, I want to limit myself to 4 models, thus it's very
+likely that your favorite LLM is not in the list. It should however be straight forward enough to replicate what I just did for
+any model, at least if you don't wait for too long, because it's only a matter of time till models will learn about this article
+in one way or another. Here are the participating LLMs:
 
 * Microsoft Copilot using `Smart (GPT-5)` mode
 * Microsoft Copilot using `Think Deeper` mode
@@ -175,10 +175,12 @@ Therefore, I'm concluding with a score of `0`.
 ### Microsoft Copilot (Think Deeper)
 
 Copilot in "Think Deeper" mode did somewhat better:
-* The generated benchmark had an acceptable ETA from the start. 
+
+* The generated benchmark had an acceptable ETA from the start.
 * The useless performance comparison between "explicit" and "implicit" casts was removed.
 
 What remained, was a comparison between summing over `int[]` and `ArrayList<Integer>`, that we already discussed above:
+
 ```java
     /**
  * Pure primitive loop: no casts or object indirection.
@@ -206,6 +208,7 @@ public long sumList(Data data) {
     return sum;
 }
 ```
+
 Since the model stayed with this benchmark, even after having given the chance to refine it, my score is `0` once again.
 
 ### Google Gemini 2.5 Pro
@@ -738,9 +741,10 @@ The capabilities of modern LLMs are impressive, and they can be a very useful to
 their output can be easily validated, or errors are cheap. If any of these conditions is not met, they are far less useful though,
 at least unless there is another break-though.
 
-Writing JMH benchmarks is definitely not something where it pays off to consult an LLM for me. Even if I got the perfect answer,
-validating and understanding the implications of the benchmark would probably take at least as much time as doing everything on my
-own.
+In the context of benchmarking, LLMs have helped me quite a bit when digging though JIT generated assembly, or for plot
+generation, though [jmh-visualizer](https://github.com/jzillmann/jmh-visualizer) is typically good enough. Designing and writing
+micro-benchmarks though is definitely not something that I'd leave to an LLM. Even if I got the perfect answer, the actual work is
+anyway validating and understanding its implications.
 
 
 
