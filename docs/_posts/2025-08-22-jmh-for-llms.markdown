@@ -3,7 +3,7 @@ layout: post
 title: "JMH for LLMs"
 date: 2025-08-22 07:08:09 +0200
 categories: "Java Performance"
-excerpt: "How I used JMH to measure LLM & Java casting performance at the same time"
+excerpt: "How I used JMH to measure LLM & Java casting performance at the same time."
 published: true
 ---
 
