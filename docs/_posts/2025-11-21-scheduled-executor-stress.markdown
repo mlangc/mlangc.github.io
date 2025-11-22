@@ -16,7 +16,7 @@ Apart from that I want to briefly discuss a recent change in that area: Since JD
 is no longer the only implementation of `ScheduledExecutorService` shipped with standard Java, as [ForkJoinPool has been 
 updated to implement the interface as well](https://bugs.openjdk.org/browse/JDK-8362881).
 
-Last but not least, I want to look into timed waiting: How long does `sleep(100)` really sleep?
+Last but not least, I want to look into timed waiting, or put differently: How long does `sleep(100)` really sleep?
 
 
 
