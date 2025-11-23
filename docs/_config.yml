@@ -30,10 +30,10 @@ google_analytics: G-Z829NCMGBB
 
 # Build settings
 
-theme: minima
-#remote_theme: "jekyll/minima@1e8a445"
-#plugins:
-#  - jekyll-remote-theme
+#theme: minima
+remote_theme: "jekyll/minima@1e8a445"
+plugins:
+  - jekyll-remote-theme
 
 minima:
   show_excerpts: true
