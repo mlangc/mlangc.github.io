@@ -68,7 +68,7 @@ Note the implications: If you submit 10 tasks, `t0, ..., t4`, each running for `
 be executed with a delay of `500ms`, some compromises are needed, at least for fewer than 6 threads.
 
 Here is a visual summary about what happens in the above scenario, for exactly one thread:
-![execute-vs-schedule](/assets/drawings/2025-11-21-execute-vs-schedule.drawio.png)
+![execute-vs-schedule](/assets/img/2025-11-21-execute-vs-schedule-copilot.png)
 
 As you can see, and conform yourself
 
