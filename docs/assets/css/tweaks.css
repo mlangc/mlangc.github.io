@@ -15,3 +15,7 @@ img[alt=fib-till-stop-bench-results] {
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
+img[alt=overflowing-task-runs-for-3-periods] {
+    width: 100%;
+}
