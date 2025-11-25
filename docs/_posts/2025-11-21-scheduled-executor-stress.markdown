@@ -64,28 +64,55 @@ The Javadocs of `ScheduledExecutorService`, which covers both implementations, s
 > Commands submitted using the Executor.execute(Runnable) and ExecutorService submit methods are scheduled with a requested
 > delay of zero.
 
-Note the implications: If you submit 10 tasks, `t0, ..., t4`, each running for `200ms`, and then schedule another task `s`, to
-be executed with a delay of `500ms`, some compromises are needed, at least for fewer than 6 threads.
+Note the implications: If you submit 5 tasks, `t0, ..., t4`, each running for `200ms`, and then schedule another task `s`, to be
+executed with a delay of `500ms`, some compromises are needed, unless there are enough threads.
 
-Here is a visual summary about what happens in the above scenario, for exactly one thread:
-![execute-vs-schedule](/assets/img/2025-11-21-execute-vs-schedule-copilot.png)
+Here is a visual summary about what happens in the above scenario, for a pool with only a single thread, like `ForkJoinPool(1)` or
+`Executors.newSingleThreadScheduledExecutor()`:
+![execute-vs-schedule](/assets/drawings/2025-11-21-execute-vs-schedule.drawio.png)
 
-As you can see, and conform yourself
+As you can see and confirm for yourself by running [ScheduledExecutorServiceSubmitGettingInTheWay](todo), the task `s` that has
+been scheduled with a delay of `500ms` is not run before `t0, ..., t4` are finished, which therefore actually runs with a delay of
+`~1000ms`, instead of the scheduled `500ms`.
 
+If we add another thread to our overloaded executor service, it looks like this, though the exact task to thread assignments will
+vary:
+![execute-vs-schedule-2threads](/assets/drawings/2025-11-21-execute-vs-schedule-2threads.drawio.png)
 
-Let's briefly discuss how `ScheduledExecutorService` is 
-implemented. JDK 25 ships two implementations:
+Now `t0`, `t1` and `s` are executed on time, while `t2`, `t3` are delayed by roughly `200ms` and `t4` is delayed by `~400ms`.
+
+I hope that it is easy to see at this point, that at least 5 threads are needed in the above examples to get rid of all delays.
+
+## Putting Things in Perspective
+
+If you're somewhat wary about the limits of `ScheduledExecutorService` now please read on, because I want to come to its defense
+right away.
+
+For this regard note that even the smartest possible `ScheduledExecutorService` implementation cannot help you out if you
+schedule more work than the threads assigned to your executor can handle. Delays are unavoidable in such a situation, and the only
+lever an implementation has is prioritisation. Prioritizing tasks based on their scheduled execution time seems the most natural
+choice to me, last but not least, since more elaborate prioritisation strategies can easily be achieved by combining multiple
+executor services if really needed.
+
+In addition, I want to remind you of the fact, that even a single millisecond is a long time for a CPU core. In it, you can
+
+* calculate ten-thousands of greatest common divisors of long values
+* instantiate hundred-thousands of `ArrayList` objects
+* or invoke `ThreadLocalRandom.current().nextLong()` somewhere in the ballpark of `500_000` times.
+
+Let's briefly discuss how `ScheduledExecutorService` is implemented. JDK 25 ships two implementations:
 `ForkJoinPool` and `ScheduledThreadPoolExecutor`.
 
 `ScheduledThreadPoolExecutor` has been around for ages, and relies on a custom priority work queue (see
 `ScheduledThreadPoolExecutor.DelayedWorkQueue`), where all tasks are submitted to, weather they are delayed or not.
 
-`ForkJoinPool` was extended to implement `ScheduledExecutorService` in JDK 25, as part of an effort to [improve the performance
-of delayed task handling](https://bugs.openjdk.org/browse/JDK-8350493). Instead of deeply integrating the scheduling
-functionality into `ForkJoinPool`, the actual scheduling is performed by a single `java.util.concurrent.DelayScheduler` thread,
-that is started on demand, which maintains a [4 ary heap](https://en.wikipedia.org/wiki/D-ary_heap) based on trigger times.
-When its delay expires, the respective task is scheduled to execute on the connected `ForkJoinPool`. Regular task submissions
-via `submit` or `execute` completely bypass the delay scheduler.
+`ForkJoinPool` was extended to implement `ScheduledExecutorService` in JDK 25, as part of an effort
+to [improve the performance of delayed task handling](https://bugs.openjdk.org/browse/JDK-8350493). Instead of deeply integrating
+the scheduling functionality into `ForkJoinPool`, the actual scheduling is performed by a single
+`java.util.concurrent.DelayScheduler` thread, that is started on demand, which maintains
+a [4 ary heap](https://en.wikipedia.org/wiki/D-ary_heap) based on trigger times. When its delay expires, the respective task is
+scheduled to execute on the connected `ForkJoinPool`. Regular task submissions via `submit` or `execute` completely bypass the
+delay scheduler.
 
 
 
