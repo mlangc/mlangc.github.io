@@ -83,6 +83,45 @@ Now `t0`, `t1` and `s` are executed on time, while `t2`, `t3` are delayed by rou
 
 I hope that it is easy to see at this point, that at least 5 threads are needed in the above examples to get rid of all delays.
 
+## Virtual Threads to the Rescue?
+
+Note that with virtual threads, there is another way to schedule delayed, or periodic tasks in large numbers, without
+excessive resources usage. A somewhat simplified implementation of `ScheduledExecutorService.scheduleWithFixedDelay` for 
+example could look like
+```java
+interface Schedule {
+    void cancel();
+}
+
+static Schedule scheduleWithFixedDelayUsingVirtualThread(
+        Runnable command, long initialDelay, long delay, TimeUnit unit) {
+    var cancelled = new AtomicBoolean();
+    var thread = Thread.ofVirtual().unstarted(() -> {
+        try {
+            Thread.sleep(Duration.of(initialDelay, unit.toChronoUnit()));
+
+            while (!cancelled.get()) {
+                command.run();
+                Thread.sleep(Duration.of(delay, unit.toChronoUnit()));
+            }
+        } catch (InterruptedException e) {
+            // Nothing to do, we are already terminating the thread
+        }
+    });
+
+    Schedule schedule = () -> cancelled.set(true);
+    thread.start();
+    return schedule;
+}
+```
+
+This works, however note that we are still relying on a `ScheduledExecutorService` implementation, though indirectly. I'm speaking
+of the `ForkJoinPool` hosting the carrier threads, that virtual threads are mounted on. When a virtual thread is put to
+`Thread.sleep`, it reschedules its resumption after the specified delay on the carrier thread pool, and yields its continuation.
+If all carrier threads are busy with, our scheduled tasks have to wait in the queue and cannot execute. While it's unlikely to see
+this in practice, it's very easy to permanently block all carrier threads on purpose, as demonstrated in [this example](TODO).
+
+
 ## Putting Things in Perspective
 
 If you're somewhat wary about the limits of `ScheduledExecutorService` now please read on, because I want to come to its defense
@@ -93,6 +132,41 @@ schedule more work than the threads assigned to your executor can handle. Delays
 lever an implementation has is prioritisation. Prioritizing tasks based on their scheduled execution time seems the most natural
 choice to me, last but not least, since more elaborate prioritisation strategies can easily be achieved by combining multiple
 executor services if really needed.
+
+Also, note that unlike the OS thread scheduler which can pause and resume threads as it pleases, the JVM can 
+only make scheduling decisions at task boundaries.
+
+## Recommendations
+
+Let me conclude this blog post with a few recommendations regarding `ScheduledExecutorService` that follow from the points 
+we've just discussed.
+
+#### Move important schedules to dedicated & properly sized executors
+
+If you happen to have some schedules that are more important than others, and are expected to run reliably even if your 
+service is under heavy load, you must plan for that by submitting them to properly sized executors backed by platform threads. 
+
+Note that virtual threads are not a good idea in this area: They are implemented by `Continuation` objects, which are 
+themselves scheduled on a `ForkJoinPool`.
+
+#### Schedule short-running, mostly CPU bound tasks, and avoid blocking
+
+Scheduling long-running tasks can easily cause delays as we have seen. If you want to that nonetheless, nonetheless, consider
+scheduling them indirectly, as in
+
+```java
+scheduler.schedule(() -> worker.execute(this::longRunningAction), 1, TimeUnit.SECONDS);
+```
+
+Note that the `ScheduledExecutorService` implementation in `ForkJoinPool` uses this pattern internally: Scheduling is done by a
+single, dedicated thread, that submits the actual work to the regular pool threads.
+
+#### Randomly assign initial delays
+
+If you schedule periodic tasks, consider randomizing initial delays, to reduce the chance of schedules being in lockstep.
+
+
+
 
 In addition, I want to remind you of the fact, that even a single millisecond is a long time for a CPU core. In it, you can
 
