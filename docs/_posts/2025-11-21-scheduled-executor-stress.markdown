@@ -1,27 +1,22 @@
 ---
 layout: post
-title: "Putting ScheduledExecutorService under Stress"
+title: "ScheduledExecutorService under Stress"
 date: 2025-11-21
 categories: Java Concurrency
-excerpt: "Putting ScheduledExecutorService under Stress"
+excerpt: "ScheduledExecutorService under Stress"
 ---
 
-In this blog post I want to closely look into the behaviour exhibited by standard ScheduledExecutorService implementations shipped
-with Java 25 when faced with impossible, or highly challenging demands. More specifically, I want to discuss what happens if
+In this blog post I want to closely look into the behaviour exhibited by standard `ScheduledExecutorService` implementations shipped
+with standard Java when faced with impossible, or highly challenging demands. More specifically, I want to discuss what 
+happens if
 
 * `ScheduledExecutorService.scheduleAtFixedRate` is called with a runnable, that occasionally runs longer than the configured
   rate.
 * or scheduled and immediate tasks have to compete with other tasks for spare resources.
 
-Apart from that I want to briefly discuss a recent change in that area: Since JDK 25, `ScheduledThreadPoolExecutor`
-is no longer the only implementation of `ScheduledExecutorService` shipped with standard Java,
-as [ForkJoinPool has been updated to implement ScheduledExecutorService as well](https://bugs.openjdk.org/browse/JDK-8362881).
+I want to conclude with some recommendations intended to address the aforementioned limitations.
 
-Last but not least, I want to look into timed waiting, or put differently: How long does `sleep(100)` really sleep?
-
-Let's start with the simplest of the aforementioned edge cases:
-
-## ScheduledExecutorService.scheduleAtFixedRate: When desire meets reality
+## What happens if scheduleAtFixedRate is not keeping up?
 
 According to
 the [documentation](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ScheduledExecutorService.html#scheduleAtFixedRate(java.lang.Runnable,long,long,java.util.concurrent.TimeUnit)),
@@ -44,21 +39,10 @@ Here is what I got, visually summarized:
 
 ![overflowing-task-runs-for-3-periods](/assets/drawings/2025-11-21-schedule-at-fixed-rate-overflow.drawio.png)
 
-Something else can be noticed when looking at the actual numbers that the experiment prints to the console (note that
-`1ms = 1_000_000ns`). The executions are always a few milliseconds late:
+As you can see, the implementation schedules one task right after the other until it has arrived at the expected execution 
+count, and then proceeds as normal.
 
-```text
-Executing schedule 000 at   510,239,350,875ns, which is         2,030,375ns too late
-Executing schedule 001 at   510,546,730,833ns, which is       209,410,333ns too late
-Executing schedule 002 at   510,557,060,458ns, which is       119,739,958ns too late
-Executing schedule 003 at   510,568,988,208ns, which is        31,667,708ns too late
-Executing schedule 004 at   510,640,559,791ns, which is         3,239,291ns too late
-Executing schedule 005 at   510,744,208,250ns, which is         6,887,750ns too late
-```
-
-I'll come back to that.
-
-## Directly submitted tasks getting in the way of scheduled tasks
+## What happens if directly submitted and scheduled tasks get in each others way?
 
 The Javadocs of `ScheduledExecutorService`, which covers both implementations, state:
 > Commands submitted using the Executor.execute(Runnable) and ExecutorService submit methods are scheduled with a requested
@@ -83,113 +67,20 @@ Now `t0`, `t1` and `s` are executed on time, while `t2`, `t3` are delayed by rou
 
 I hope that it is easy to see at this point, that at least 5 threads are needed in the above examples to get rid of all delays.
 
-## Virtual Threads to the Rescue?
-
-Note that with virtual threads, there is another way to schedule delayed, or periodic tasks in large numbers, without
-excessive resources usage. A somewhat simplified implementation of `ScheduledExecutorService.scheduleWithFixedDelay` for 
-example could look like
-```java
-interface Schedule {
-    void cancel();
-}
-
-static Schedule scheduleWithFixedDelayUsingVirtualThread(
-        Runnable command, long initialDelay, long delay, TimeUnit unit) {
-    var cancelled = new AtomicBoolean();
-    var thread = Thread.ofVirtual().unstarted(() -> {
-        try {
-            Thread.sleep(Duration.of(initialDelay, unit.toChronoUnit()));
-
-            while (!cancelled.get()) {
-                command.run();
-                Thread.sleep(Duration.of(delay, unit.toChronoUnit()));
-            }
-        } catch (InterruptedException e) {
-            // Nothing to do, we are already terminating the thread
-        }
-    });
-
-    Schedule schedule = () -> cancelled.set(true);
-    thread.start();
-    return schedule;
-}
-```
-
-This works, however note that we are still relying on a `ScheduledExecutorService` implementation, though indirectly. I'm speaking
-of the `ForkJoinPool` hosting the carrier threads, that virtual threads are mounted on. When a virtual thread is put to
-`Thread.sleep`, it reschedules its resumption after the specified delay on the carrier thread pool, and yields its continuation.
-If all carrier threads are busy with, our scheduled tasks have to wait in the queue and cannot execute. While it's unlikely to see
-this in practice, it's very easy to permanently block all carrier threads on purpose, as demonstrated in [this example](TODO).
-
-
-## Putting Things in Perspective
-
-If you're somewhat wary about the limits of `ScheduledExecutorService` now please read on, because I want to come to its defense
-right away.
-
-For this regard note that even the smartest possible `ScheduledExecutorService` implementation cannot help you out if you
-schedule more work than the threads assigned to your executor can handle. Delays are unavoidable in such a situation, and the only
-lever an implementation has is prioritisation. Prioritizing tasks based on their scheduled execution time seems the most natural
-choice to me, last but not least, since more elaborate prioritisation strategies can easily be achieved by combining multiple
-executor services if really needed.
-
-Also, note that unlike the OS thread scheduler which can pause and resume threads as it pleases, the JVM can 
-only make scheduling decisions at task boundaries.
-
 ## Recommendations
 
-Let me conclude this blog post with a few recommendations regarding `ScheduledExecutorService` that follow from the points 
-we've just discussed.
+`SchduledExecutorService` implementations shipped with the JDK tend to be fairly reliable, but have to make trade-offs when 
+faced with impossible demands, last but not least, because other than the OS thread scheduler, the JVM cannot interrupt and 
+resume threads at will.
 
-#### Move important schedules to dedicated & properly sized executors
+Let me conclude with some recommendations regarding `ScheduledThreadPoolExecutor`:
 
-If you happen to have some schedules that are more important than others, and are expected to run reliably even if your 
-service is under heavy load, you must plan for that by submitting them to properly sized executors backed by platform threads. 
-
-Note that virtual threads are not a good idea in this area: They are implemented by `Continuation` objects, which are 
-themselves scheduled on a `ForkJoinPool`.
-
-#### Schedule short-running, mostly CPU bound tasks, and avoid blocking
-
-Scheduling long-running tasks can easily cause delays as we have seen. If you want to that nonetheless, nonetheless, consider
-scheduling them indirectly, as in
-
-```java
-scheduler.schedule(() -> worker.execute(this::longRunningAction), 1, TimeUnit.SECONDS);
-```
-
-Note that the `ScheduledExecutorService` implementation in `ForkJoinPool` uses this pattern internally: Scheduling is done by a
-single, dedicated thread, that submits the actual work to the regular pool threads.
-
-#### Randomly assign initial delays
-
-If you schedule periodic tasks, consider randomizing initial delays, to reduce the chance of schedules being in lockstep.
-
-
-
-
-In addition, I want to remind you of the fact, that even a single millisecond is a long time for a CPU core. In it, you can
-
-* calculate ten-thousands of greatest common divisors of long values
-* instantiate hundred-thousands of `ArrayList` objects
-* or invoke `ThreadLocalRandom.current().nextLong()` somewhere in the ballpark of `500_000` times.
-
-Let's briefly discuss how `ScheduledExecutorService` is implemented. JDK 25 ships two implementations:
-`ForkJoinPool` and `ScheduledThreadPoolExecutor`.
-
-`ScheduledThreadPoolExecutor` has been around for ages, and relies on a custom priority work queue (see
-`ScheduledThreadPoolExecutor.DelayedWorkQueue`), where all tasks are submitted to, weather they are delayed or not.
-
-`ForkJoinPool` was extended to implement `ScheduledExecutorService` in JDK 25, as part of an effort
-to [improve the performance of delayed task handling](https://bugs.openjdk.org/browse/JDK-8350493). Instead of deeply integrating
-the scheduling functionality into `ForkJoinPool`, the actual scheduling is performed by a single
-`java.util.concurrent.DelayScheduler` thread, that is started on demand, which maintains
-a [4 ary heap](https://en.wikipedia.org/wiki/D-ary_heap) based on trigger times. When its delay expires, the respective task is
-scheduled to execute on the connected `ForkJoinPool`. Regular task submissions via `submit` or `execute` completely bypass the
-delay scheduler.
-
-
-
-
-
-
+* Create important schedules on dedicated executors, and monitor execution time as well as execution frequencies and/or delays,
+  to detect problems early.
+* If you have many periodic schedules, randomize initial delays to minimize the risk of schedules being executed in lockstep.
+* If you schedule lots of blocking tasks, consider decupling the scheduling from the actual execution of these tasks, like in
+    ```java
+    scheduler.schedule(() -> worker.execute(this::blockingAction), 1, TimeUnit.SECONDS);
+    ```
+    where `worker` could potentially employ virtual threads. However, note that without additional locking, this pattern might 
+result in tasks from the same period schedule being executed in parallel.
