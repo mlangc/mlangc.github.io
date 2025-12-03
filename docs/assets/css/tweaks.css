@@ -23,3 +23,7 @@ img[alt=overflowing-task-runs-for-3-periods] {
 img[alt=execute-vs-schedule] {
     width: 100%;
 }
+
+img[alt=execute-vs-schedule-2threads] {
+    width: 75%;
+}
