@@ -11,7 +11,7 @@ shipped with standard Java when faced with impossible demands. More specifically
 
 * `ScheduledExecutorService.scheduleAtFixedRate` is called with a runnable, that occasionally runs longer than the configured
   rate.
-* tasks have to compete with other tasks for insufficient resources.
+* tasks have to compete with each other for insufficient resources.
 
 I want to conclude with some recommendations intended to address the aforementioned limitations.
 
@@ -83,5 +83,5 @@ Let me conclude with some recommendations regarding `ScheduledThreadPoolExecutor
 ```java
 scheduler.schedule(() -> worker.execute(this::blockingAction), 1, TimeUnit.SECONDS);
 ```
-    where `worker` could potentially employ virtual threads. However, note that without additional locking, this pattern might 
-result in tasks from the same period schedule being executed in parallel.
+where `worker` could potentially employ virtual threads. However, note that without additional locking, this pattern might 
+result in tasks from the same periodic schedule being executed in parallel.
