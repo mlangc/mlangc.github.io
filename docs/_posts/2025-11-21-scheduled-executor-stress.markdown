@@ -76,9 +76,13 @@ will.
 
 Let me conclude with some recommendations regarding `ScheduledThreadPoolExecutor`:
 
-* Create important schedules on dedicated executors, and monitor execution time as well as execution frequencies and/or delays,
-  to detect problems early.
+* Create important schedules on dedicated executors, and monitor execution time as well as execution frequencies and/or delays, to
+  detect problems early.
 * If you have many periodic schedules, randomize initial delays to minimize the risk of schedules being executed in lockstep.
+* Don't use virtual threads to back `ScheduledThreadPoolExecutor` implementations, because apart from other reasons against it,
+  doing so means implementing one `ScheduledThreadPoolExecutor` on top of another.
+  See [here in the JDK source code](https://github.com/openjdk/jdk25u/blob/jdk-25%2B36/src/java.base/share/classes/java/lang/VirtualThread.java#L562)
+  if you are interested in the details.
 * If you schedule lots of blocking tasks, consider decoupling the scheduling from the actual execution of these tasks, like in
 ```java
 scheduler.schedule(() -> worker.execute(this::blockingAction), 1, TimeUnit.SECONDS);
