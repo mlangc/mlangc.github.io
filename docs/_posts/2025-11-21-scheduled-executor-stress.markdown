@@ -3,14 +3,15 @@ layout: post
 title: "ScheduledExecutorService under Stress"
 date: 2025-11-21
 categories: Java Concurrency
-excerpt: "ScheduledExecutorService under Stress"
+excerpt: "What happens if ScheduledExecutorService cannot meet its demands."
 ---
 
-In this blog post I want to closely look into the behaviour exhibited by `ScheduledExecutorService` implementations
-shipped with Java when faced with impossible demands. More specifically, I want to discuss what happens if
+In this blog post I want to closely look into the behaviour exhibited
+by [ScheduledExecutorService](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ScheduledExecutorService.html)
+implementations shipped with Java when faced with impossible demands. More specifically, I want to discuss what happens if
 
-* `ScheduledExecutorService.scheduleAtFixedRate` is called with a runnable, that occasionally runs longer than the configured
-  rate.
+* [ScheduledExecutorService.scheduleAtFixedRate](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ScheduledExecutorService.html#scheduleAtFixedRate(java.lang.Runnable,long,long,java.util.concurrent.TimeUnit))
+  is called with a runnable, that occasionally runs longer than the configured rate.
 * scheduled and immediate tasks have to compete with each other for insufficient resources.
 
 I want to conclude with some recommendations intended to address the aforementioned limitations.
@@ -30,8 +31,7 @@ it's a bit vague about the exact behaviour:
 > If any execution of this task takes longer than its period, then subsequent executions may start late,
 > but will not concurrently execute.
 
-To figure out what the implementation actually does, I created [a small experiment](https://github.
-com/mlangc/java-snippets/blob/6f90084eb2380a26a5898117ac90c51d92a60c5f/src/main/java/at/mlangc/concurrent/scheduled/executor/stress/ScheduledExecutorServiceFixedRateWithPeriodOverflowDemo.java#L15),
+To figure out what the implementation actually does, I created [a small experiment](https://github.com/mlangc/java-snippets/blob/6f90084eb2380a26a5898117ac90c51d92a60c5f/src/main/java/at/mlangc/concurrent/scheduled/executor/stress/ScheduledExecutorServiceFixedRateWithPeriodOverflowDemo.java#L15),
 where the running time of a periodically submitted task exceeds the `period` of `ScheduledExecutorService.scheduleAtFixedRate` by
 a bit more than a factor of 3 one time, and then falls back to runtimes way below `period`.
 
@@ -74,7 +74,7 @@ I hope that it is easy to see at this point, that at least 5 threads are needed 
 with impossible demands. Keep in mind, that other than the OS thread scheduler, the JVM cannot interrupt and resume threads at
 will.
 
-Let me conclude with some recommendations regarding `ScheduledThreadPoolExecutor`:
+Let me conclude with some recommendations regarding `ScheduledExecutorService`:
 
 * Create important schedules on dedicated executors, and monitor execution time as well as execution frequencies and/or delays, to
   detect problems early.
