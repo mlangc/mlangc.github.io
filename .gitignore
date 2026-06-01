@@ -97,3 +97,4 @@ Temporary Items
 .idea/
 *.iml
 *.dtmp
+.claude/
