@@ -27,3 +27,7 @@ img[alt=execute-vs-schedule] {
 img[alt=execute-vs-schedule-2threads] {
     width: 75%;
 }
+
+img[alt=executor-deadlock-minimal-reproduction] {
+    width: 50%;
+}
