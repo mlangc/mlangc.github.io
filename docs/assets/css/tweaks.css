@@ -28,6 +28,10 @@ img[alt=execute-vs-schedule-2threads] {
     width: 75%;
 }
 
-img[alt=executor-deadlock-minimal-reproduction] {
+img[alt=executor-deadlock-minimal-reproduction], img[alt=executor-deadlock-minimal-reproduction-fixed-with-two-threads], img[alt=executor-deadlock-minimal-reproduction-with-2-threads] {
     width: 50%;
+}
+
+img[alt=executor-deadlock-minimal-reproduction-with-2-threads] {
+    width: 90%;
 }
