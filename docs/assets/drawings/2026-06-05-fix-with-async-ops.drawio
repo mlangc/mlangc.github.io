@@ -1,0 +1,58 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="nyiRhwZ-tDJM8Vz5RrW8">
+    <mxGraphModel dx="1417" dy="834" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="WABdPqK2qy4MYdlEIFbB-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FF8000;direction=south;" value="" vertex="1">
+          <mxGeometry height="20" width="580" x="220" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="WABdPqK2qy4MYdlEIFbB-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a20025;strokeColor=#6F0000;fontColor=#ffffff;" value="Task S - part 1&lt;div&gt;(schedules T)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="280" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="WABdPqK2qy4MYdlEIFbB-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(0, 0, 0));&quot;&gt;Executor Thread&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="140" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#999999;strokeColor=#000000;" value="Task T&lt;div&gt;(prints &quot;T done&quot;)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="480" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d80073;strokeColor=#A50040;fontColor=#ffffff;" value="Task S - part 2&lt;div&gt;(prints &quot;S done&quot;)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="640" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-19" edge="1" parent="1" style="endArrow=none;dashed=1;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="280" as="sourcePoint" />
+            <mxPoint x="440" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-20" edge="1" parent="1" source="WABdPqK2qy4MYdlEIFbB-2" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="KK4WQhS2i4YxjdtZfuzL-11" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="540" y="200" as="sourcePoint" />
+            <mxPoint x="590" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-21" edge="1" parent="1" source="KK4WQhS2i4YxjdtZfuzL-11" style="endArrow=classic;html=1;rounded=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="600" y="229.66" as="sourcePoint" />
+            <mxPoint x="640" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-22" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="async boundary" vertex="1">
+          <mxGeometry height="30" width="60" x="410" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-23" parent="1" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;legacyAnchorPoints=0;size=0.5;direction=north;" value="" vertex="1">
+          <mxGeometry height="20" width="300" x="470" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-24" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Executed via CompletableFuture.AsyncRun" vertex="1">
+          <mxGeometry height="45" width="200" x="525" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-25" parent="1" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;legacyAnchorPoints=0;size=0.5;direction=north;" value="" vertex="1">
+          <mxGeometry height="20" width="160" x="260" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="KK4WQhS2i4YxjdtZfuzL-26" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Executed via&lt;div&gt;CompletableFuture.AsyncSupply&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; white-space: nowrap;&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20parent%3D%221%22%20style%3D%22text%3Bhtml%3D1%3BwhiteSpace%3Dwrap%3BstrokeColor%3Dnone%3BfillColor%3Dnone%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Brounded%3D0%3B%22%20value%3D%22Executed%20in%20the%20scope%20of%20CompletableFuture.AsyncRun%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2230%22%20width%3D%22190%22%20x%3D%22530%22%20y%3D%22330%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start; white-space: nowrap;&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20parent%3D%221%22%20style%3D%22text%3Bhtml%3D1%3BwhiteSpace%3Dwrap%3BstrokeColor%3Dnone%3BfillColor%3Dnone%3Balign%3Dcenter%3BverticalAlign%3Dmiddle%3Brounded%3D0%3B%22%20value%3D%22Executed%20in%20the%20scope%20of%20CompletableFuture.AsyncRun%22%20vertex%3D%221%22%3E%3CmxGeometry%20height%3D%2230%22%20width%3D%22190%22%20x%3D%22530%22%20y%3D%22330%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="55" width="225" x="227.5" y="325" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -97,3 +97,21 @@ void main() {
 }
 ```
 
+This fixes the problem because `taskS` now releases its hold on the executor thread after scheduling `taskT`, and therefore
+alows `taskT` to run. As you can confirm by instrumenting our executor with
+```java
+var executor = new Executor() {
+    final Executor impl = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory());
+
+    @Override
+    public void execute(Runnable command) {
+        out.printf("execute(%s)%n", command);
+        impl.execute(command);
+    }
+};
+```
+there are still two `Runnable`s being submitted. The first one, implemented by `CompletableFuture.AsyncSupply`, corresponds
+to the first part of `taskS`, that schedules `taskT`. The second one, implemented by `CompletableFuture.AsyncRun` executes
+`taskT`, and then the remaining part of `taskS`. Assembled in a diagram, I like to imagine what happens like this:
+
+![executor-deadlock-fix-with-async-ops](/assets/drawings/2026-06-05-fix-with-async-ops.drawio.png)
