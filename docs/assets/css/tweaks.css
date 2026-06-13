@@ -39,3 +39,7 @@ img[alt=executor-deadlock-minimal-reproduction-with-2-threads] {
 img[alt=executor-deadlock-fix-with-async-ops] {
     width: 95%;
 }
+
+img[alt=deadlocking-executors-is-fine-meme] {
+    width: 100%;
+}
