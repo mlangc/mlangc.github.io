@@ -1,19 +1,19 @@
 <mxfile host="Electron">
   <diagram name="Page-1" id="EooaVccjyX0nO5Z9Wqe2">
-    <mxGraphModel dx="1417" dy="834" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+    <mxGraphModel dx="2054" dy="1210" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="N0Xhakewti7OGX9amp9R-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="append(event)&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;(1)&lt;/span&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="N0Xhakewti7OGX9amp9R-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="append(event)" vertex="1">
           <mxGeometry height="60" width="120" x="280" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="N0Xhakewti7OGX9amp9R-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="waitForBufferSpace&lt;div&gt;(2)&lt;/div&gt;" vertex="1">
+        <mxCell id="N0Xhakewti7OGX9amp9R-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="waitForBufferSpace" vertex="1">
           <mxGeometry height="60" width="120" x="480" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="N0Xhakewti7OGX9amp9R-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="appendToBuffers&lt;div&gt;(3)&lt;/div&gt;" vertex="1">
+        <mxCell id="N0Xhakewti7OGX9amp9R-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="appendToBuffer&lt;div&gt;(3)&lt;/div&gt;" vertex="1">
           <mxGeometry height="60" width="120" x="680" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="N0Xhakewti7OGX9amp9R-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="log.info(x)&lt;div&gt;(0)&lt;/div&gt;" vertex="1">
+        <mxCell id="N0Xhakewti7OGX9amp9R-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="log.info(x)" vertex="1">
           <mxGeometry height="60" width="120" x="80" y="160" as="geometry" />
         </mxCell>
         <mxCell id="N0Xhakewti7OGX9amp9R-8" edge="1" parent="1" source="N0Xhakewti7OGX9amp9R-7" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="N0Xhakewti7OGX9amp9R-1" value="">
