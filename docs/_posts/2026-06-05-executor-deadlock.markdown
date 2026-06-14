@@ -207,13 +207,13 @@ is necessary. I'm trying to keep this as high level as possible, focusing only o
 #### Relevant AsyncHttpAppender Mechanics
 
 Let's have a look at what happens in the appender when you call `log.info(x)`:
-![test](/assets/drawings/2026-06-05-append-x.drawio.png)
+![executor-deadlock-append-x](/assets/drawings/2026-06-05-append-x.drawio.png)
 
 The most important thing about the drawing above is what is doesn't contain: As you can see, the buffer is only appended to, but
 not drained. Draining is done asynchronously by a single threaded executor that is shared with the `HttpAppender`
 implementation:
 
-![test](/assets/drawings/2026-06-05-drain-buffers.drawio.png)
+![executor-deadlock-drain-buffers](/assets/drawings/2026-06-05-drain-buffers.drawio.png)
 
 This drawing needs more explanation than the last one, so let's go through it step by step:
 
@@ -324,9 +324,9 @@ because their release is chained after
 res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 ```
 
-which is not executed, since all threads in the common pool are blocked.
+which is not executed, since all threads in the common pool are blocked. You can picture it like this:
 
-#### TODO: Diagram
+![executor-deadlock-waiting-circle](/assets/drawings/2026-06-05-waiting-circle.drawio.png)
 
 If the number of threads in the common `ForkJoin` pool is greater than 4, the test passes without issues, since then there are 
 threads that can pick up the work chained after the completion of the HTTP request, and release the semaphore.

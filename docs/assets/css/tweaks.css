@@ -43,3 +43,7 @@ img[alt=executor-deadlock-fix-with-async-ops] {
 img[alt=deadlocking-executors-is-fine-meme] {
     width: 100%;
 }
+
+img[alt=executor-deadlock-waiting-circle] {
+    width: 60%;
+}
