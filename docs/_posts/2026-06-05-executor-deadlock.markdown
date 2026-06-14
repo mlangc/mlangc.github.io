@@ -201,7 +201,8 @@ found out that I can reproduce the hanging on my laptop by setting
 which restricts the number of threads in
 the [ForkJoinPool#commonPool](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ForkJoinPool.html#commonPool()).
 
-In order to understand what happened and why, a closer look into the implementation of the `AsyncHttpAppender`
+In order to understand what happened and why, a closer look into the 
+[implementation of the AsyncHttpAppender](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L64-L64)
 is necessary. I'm trying to keep this as high level as possible, focusing only on the parts relevant for our discussion.
 
 #### Relevant AsyncHttpAppender Mechanics
@@ -223,8 +224,10 @@ This drawing needs more explanation than the last one, so let's go through it st
    thread we are running on is shared with the HTTP client. In this case it would be fatal though: Since the semaphore is
    only released after the HTTP client returns, blocking the thread would make sure that this never happens, and we would be
    deadlocked immediately. For that reason the implementation uses
-   `Semaphore#tryAcquire()` instead, which never blocks. If `tryAcquire` fails, the appender reschedules a drain attempt on the
-   executor using an exponential backoff logic, and releases the thread. This is what the diagram colloquially paraphrases as "
+   `Semaphore#tryAcquire()`, which never blocks. If `tryAcquire` fails, the appender 
+   [reschedules a drain attempt](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L518-L518)
+   on the executor using an exponential backoff logic, and releases the thread. This is what the 
+   diagram colloquially paraphrases as "
    async acquire".
 2. Batches that are ready to be sent are kept in a queue, which is polled here. Note that in the actual implementation, the 
    semaphore is only acquired if there is something to poll.
@@ -244,7 +247,8 @@ picture, we need to have a brief look at a surprising detail of the `HttpClient`
 I already mentioned that the `AsyncHttpAppender` shares an executor with the used `HttpClient`, that is passed into the client 
 at construction time via `HttpClient.Builder#executor`. Therefore, you might be tempted to assume, that the `HttpClient` 
 implementation is not using the common `ForkJoinPool` at all. That's at least what I thought - until the aforementioned 
-problem led my attention to `HttpClientImpl#sendAsync`. In there you can find
+problem led my attention to `HttpClientImpl#sendAsync`. In [there](https://github.com/openjdk/jdk/blob/6c48f4ed707bf0b15f9b6098de30db8aae6fa40f/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java#L1032)
+you can find
 
 ```java
 // makes sure that any dependent actions happen in the CF default
@@ -262,7 +266,7 @@ res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 ```
 is to make sure that dependent, non-async completions, are not
 run on the executor of the `HttpClient`, but on the common `ForkJoinPool`. What are "dependent, non-async completions"? Well,
-futures that are returned by 
+completions affecting future returned by 
 * `CompletionStage#thenApply`, 
 * `CompletionStage#thenRun`, 
 * `CompletionStage#thenAccept`,
@@ -290,7 +294,7 @@ of the library that chain heavyweight operations to the returned future, which c
 
 In my opinion, it would be nice to give users a way to intervene, by allowing them to optionally configure a second executor 
 in addition to `HttpClient.Builder#executor`, that would then be used instead of `ASYNC_POOL`, but that's another topic and 
-probably not best addressed in this blog.
+probably not best addressed elsewhere.
 
 #### Connecting the Dots
 
