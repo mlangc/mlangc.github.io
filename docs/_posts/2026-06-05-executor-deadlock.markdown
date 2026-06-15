@@ -1,9 +1,9 @@
 ---
 layout: post
-title: "How to Deadlock a Java Executor Service"
+title: "How to Deadlock a Java ExecutorService"
 date: 2026-06-05
 categories: Java Concurrency
-excerpt: "TODO"
+excerpt: "An in-depth study showing how to (not) deadlock yourself with bounded executors."
 ---
 
 In this blog post I want to have a close look a type of deadlock you can run into with any Java
@@ -162,8 +162,11 @@ this context.
 ### Case Study of a Real-World Example
 
 Let me add some depth to the discussion by having a closer look at how I ran into this issue recently in a realistic setting when
-working on [more-log4j2](https://github.com/mlangc/more-log4j2). Back at the end of April 2026, I was addressing bugs pointed
-out by [Claude Sonnet 4.6](https://www.anthropic.com/news/claude-sonnet-4-6). To make sure that I fixed them properly, I
+working on [more-log4j2](https://github.com/mlangc/more-log4j2). Feel free to jump directly to the [visual summary](#waiting-circle)
+at the end of this section if you like to skip the details.
+
+Back at the end of April 2026, I was addressing bugs pointed out by [Claude Sonnet 4.6](https://www.anthropic.com/news/claude-sonnet-4-6). 
+To make sure that I fixed them properly, I
 [added a few tests](https://github.com/mlangc/more-log4j2/commit/7acd211#diff-da6eb56b57edce2e06ec766c3a5d83b19b841f5b615947e52ab710d2e92f0071R1851)
 that all passed locally. However, when I pushed these changes a few hours later, togehter with other commits, the
 [CI builds started hanging and timing out after 6 hours](https://github.com/mlangc/more-log4j2/actions/runs/24911662871).
@@ -276,7 +279,7 @@ but not
 
 * `CompletionStage#thenApplyAsync`,
 * `CompletionStage#thenRunAsync`,
-* `CompletionStage#thenAccept`, 
+* `CompletionStage#thenAcceptAsync`, 
 * `CompletionStage#thenCombineAsync` and so on. 
 
 The lambdas you pass to any of these non-async methods are run 
@@ -330,7 +333,7 @@ res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 
 which is not executed, since all threads in the common pool are blocked. You can picture it like this:
 
-![executor-deadlock-waiting-circle](/assets/drawings/2026-06-05-waiting-circle.drawio.png)
+![executor-deadlock-waiting-circle](/assets/drawings/2026-06-05-waiting-circle.drawio.png){:#waiting-circle}
 
 If the number of threads in the common `ForkJoin` pool is greater than 4, the test passes without issues, since then there are 
 threads that can pick up the work chained after the completion of the HTTP request, and release the semaphore.
