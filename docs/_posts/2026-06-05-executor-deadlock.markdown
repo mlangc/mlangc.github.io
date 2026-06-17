@@ -6,13 +6,15 @@ categories: Java Concurrency
 excerpt: "An in-depth study showing how to (not) deadlock yourself with bounded executors."
 ---
 
-In this blog post I want to have a close look a type of deadlock you can run into with any Java
+In this blog post I want to have a close look at a type of deadlock you can run into with any Java
 [ExecutorService](https://docs.oracle.com/en/java/javase/25/docs/api//java.base/java/util/concurrent/ExecutorService.html)
-with a bounded number of threads. While rare in practice, the necessary ingredients to trigger it are always at your fingertips.
-It's especially problematic and hard to debug when it affects the globally available
-[ForkJoinPool.commonPool](https://docs.oracle.com/en/java/javase/25/docs/api//java.base/java/util/concurrent/ForkJoinPool.html#commonPool())
-which is how I ran into this issue recently while working on the test-suite of
-[more-log4j2](https://github.com/mlangc/more-log4j2).
+with a bounded number of threads. While rare in practice, the necessary ingredients to trigger it are always at your fingertips,
+especially around the shared
+[ForkJoinPool#commonPool](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ForkJoinPool.html#commonPool()).
+
+First, I'll introduce you to the problem at an abstract level, in a lab setting. Then I will walk you through how I recently ran
+into this problem in the wild, while working on [more-log4j2](https://github.com/mlangc/more-log4j2), and conclude with a few
+recommendations.
 
 ### Minimal Reproduction
 
@@ -24,7 +26,7 @@ You might find it helpful to have a look at the following diagram, that captures
 
 ![executor-deadlock-minimal-reproduction](/assets/drawings/2026-06-05-minimal-reproduction.drawio.png)
 
-A minimal reproduction based on the aforementioned ideas has only a few of code:
+A minimal reproduction based on the aforementioned ideas has only a few lines of code:
 
 ```java
 void main() {
@@ -80,8 +82,8 @@ What happens if you execute the code above is captured in the diagram below:
 
 ![executor-deadlock-minimal-reproduction-with-2-threads](/assets/drawings/2026-06-05-minimal-reproduction-with-2-threads.drawio.png)
 
-The important thing in order to reproduce the deadlock, is that `S1` and `S2` are started before any of `T1` and `T2` have a
-chance to run. I hope that is clear at this point, how we could continue with 3, 4, 5,... threads.
+To reproduce the deadlock, both `S1` and `S2` have to start before either `T1` or `T2` gets a chance to run, and I hope it's
+clear from here how this generalizes to 3, 4, 5, ... threads.
 
 Luckily, there is another, more reliable way to get rid of the deadlock, without adding threads. The code can be unblocked by
 letting `taskS` wait for `taskT` *asynchronously*, like in this snippet:
@@ -100,7 +102,7 @@ void main() {
 }
 ```
 
-This fixes the problem because `taskS` now releases its hold on the executor thread after scheduling `taskT`, and therefore alows
+This fixes the problem because `taskS` now releases its hold on the executor thread after scheduling `taskT`, and therefore allows
 `taskT` to run. As you can confirm by instrumenting our executor with
 
 ```java
@@ -168,13 +170,13 @@ at the end of this section if you like to skip the details.
 Back at the end of April 2026, I was addressing bugs pointed out by [Claude Sonnet 4.6](https://www.anthropic.com/news/claude-sonnet-4-6). 
 To make sure that I fixed them properly, I
 [added a few tests](https://github.com/mlangc/more-log4j2/commit/7acd211#diff-da6eb56b57edce2e06ec766c3a5d83b19b841f5b615947e52ab710d2e92f0071R1851)
-that all passed locally. However, when I pushed these changes a few hours later, togehter with other commits, the
+that all passed locally. However, when I pushed these changes a few hours later, together with other commits, the
 [CI builds started hanging and timing out after 6 hours](https://github.com/mlangc/more-log4j2/actions/runs/24911662871).
 
 It took me some time to figure out what was going on exactly. Luckily I did not follow some reasonable sounding, but misleading
 explanations provided by Claude Opus 4.7, since I anyway wanted to find out what was going on for myself.
 
-Here is brief summary: The problematic test `AsyncHttpAppenderTest#shouldRespectMaxBatchBytesIncludingSeparatorsIfOverloaded`
+Here is a brief summary: The problematic test `AsyncHttpAppenderTest#shouldRespectMaxBatchBytesIncludingSeparatorsIfOverloaded`
 added
 with [7acd211491b6ab46b78b4215a9a70d8d7d942eb4](https://github.com/mlangc/more-log4j2/commit/7acd211491b6ab46b78b4215a9a70d8d7d942eb4)
 instantiates a log4j2 configuration that contains an [AsyncHttpAppender](https://github.com/mlangc/more-log4j2#Async-HttpAppender)
@@ -191,7 +193,7 @@ var jobs = IntStream.range(0, 4)
             }
         })).toArray(CompletableFuture<?>[]::new);
 
-assertThat(CompletableFuture.allOf(jobs)).succeedsWithin(1,TimeUnit.SECONDS);
+assertThat(CompletableFuture.allOf(jobs)).succeedsWithin(1, TimeUnit.SECONDS);
 ```
 
 As mentioned, this test passed without issues locally, however it hung completely on the CI server. After some experimentation, I
@@ -213,7 +215,7 @@ is necessary. I'm trying to keep this as high level as possible, focusing only o
 Let's have a look at what happens in the appender when you call `log.info(x)`:
 ![executor-deadlock-append-x](/assets/drawings/2026-06-05-append-x.drawio.png)
 
-The most important thing about the drawing above is what is doesn't contain: As you can see, the buffer is only appended to, but
+The most important thing about the drawing above is what it doesn't contain: As you can see, the buffer is only appended to, but
 not drained. Draining is done asynchronously by a single threaded executor that is shared with the `HttpAppender`
 implementation:
 
@@ -261,7 +263,7 @@ return res.isDone() ? res
         : res.whenCompleteAsync((r, t) ->{ /* do nothing */}, ASYNC_POOL);
 ```
 
-were `res` is a `CompletableFuture<HttpResponse<T>>` containing our response and `ASYNC_POOL` points to the common `ForkJoinPool`.
+where `res` is a `CompletableFuture<HttpResponse<T>>` containing our response and `ASYNC_POOL` points to the common `ForkJoinPool`.
 As hinted by the comment, the sole purpose of
 
 ```
@@ -297,7 +299,7 @@ of the library that chain heavyweight operations to the returned future, which c
 
 In my opinion, it would be nice to give users a way to intervene, by allowing them to optionally configure a second executor 
 in addition to `HttpClient.Builder#executor`, that would then be used instead of `ASYNC_POOL`, but that's another topic and 
-probably not best addressed elsewhere.
+probably best addressed elsewhere.
 
 #### Connecting the Dots
 
@@ -334,12 +336,14 @@ res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 which is not executed, since all threads in the common pool are blocked. You can picture it like this:
 
 ![executor-deadlock-waiting-circle](/assets/drawings/2026-06-05-waiting-circle.drawio.png){:#waiting-circle}
+*The common ForkJoinPool is busy with logging, which blocks because buffers are full; buffers can't be drained, because that 
+requires a semaphore permit; the semaphore is not released, because the common ForkJoinPool is busy with logging.*
 
-If the number of threads in the common `ForkJoin` pool is greater than 4, the test passes without issues, since then there are 
+If the number of threads in the common `ForkJoinPool` is greater than 4, the test passes without issues, since then there are
 threads that can pick up the work chained after the completion of the HTTP request, and release the semaphore.
 
 To fix the tests, I therefore [adapted them](https://github.com/mlangc/more-log4j2/commit/7057301b1e34abe2a26aaff554a4fb2efb74bfdc)
-to run potentially blocking tasks in another, test specific exeuctor.
+to run potentially blocking tasks in another, test-specific executor.
 
 ### Final Remarks and Recommendations
 
