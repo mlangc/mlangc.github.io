@@ -18,7 +18,7 @@ recommendations.
 
 ### Minimal Reproduction
 
-Let me try to explain the heart of the problem at an abstract level, before showing you how to reproduce it with a few lines of
+Let me explain the heart of the problem at an abstract level, before showing you how to reproduce it with a few lines of
 code. What you need for a minimal reproduction is a single-threaded executor service `executor` and a task `taskS` that is
 scheduled on `executor`. `taskS` schedules another `taskT` on `executor`, and waits for its completion synchronously. Since
 `executor` has only one thread that is already occupied by `taskS`, `taskT` can never start, and `taskS` therefore waits forever.
@@ -44,9 +44,9 @@ void main() {
 
 Note that `Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())` is used in favor of
 `Executors.newSingleThreadExecutor()` to make sure that executor threads cannot prevent the program from terminating. The only
-potential reason for the program to hang is therefore the last line in `main`, that schedules and waits for `taskS`.
+potential reason for the program to hang is therefore the last line in `main`, which schedules and waits for `taskS`.
 
-If you run this program, you can confirm that it hangs indeed, and all `println` statements are actually dead code.
+If you run this program, you can confirm that it indeed hangs, and all `println` statements are dead code.
 
 Before we move on, let's look at two ways to fix the deadlock. Probably the most obvious way is to add a thread to the executor,
 as in
@@ -59,7 +59,7 @@ Then `taskT` can execute while `taskS` waits for it as in the following picture:
 
 ![executor-deadlock-minimal-reproduction-fixed-with-two-threads](/assets/drawings/2026-06-05-minimal-reproduction-fixed-with-2-threads.png)
 
-However, the implementation is easily adapted to deadlock also with 2 threads:
+However, the implementation is easily adapted to also deadlock with 2 threads:
 
 ```java
 void main() {
@@ -118,7 +118,7 @@ var executor = new Executor() {
 ```
 
 there are still two `Runnable`s being submitted. The first one, implemented by `CompletableFuture.AsyncSupply`, corresponds to the
-first part of `taskS`, that schedules `taskT`. The second one, implemented by `CompletableFuture.AsyncRun`, executes
+first part of `taskS`, which schedules `taskT`. The second one, implemented by `CompletableFuture.AsyncRun`, executes
 `taskT`, and then the remaining part of `taskS`. Assembled in a diagram, you can picture what is going on as follows:
 
 ![executor-deadlock-fix-with-async-ops](/assets/drawings/2026-06-05-fix-with-async-ops.drawio.png)
@@ -152,7 +152,7 @@ we can observe at least the following:
 * Many applications use a mixture of asynchronous and synchronous code.
 * Many applications directly or indirectly submit tasks to executors from multiple places.
 
-These points together, however, are exactly what is needed to run into a real world version of the minimal reproduction above.
+These points together, however, are exactly what is needed to run into a real-world version of the minimal reproduction above.
 Unlike in our toy example, `taskS` and `taskT` could originate from different source files, modules or even libraries and the
 affected `executor` could be managed by a framework.
 
@@ -173,8 +173,8 @@ To make sure that I fixed them properly, I
 that all passed locally. However, when I pushed these changes a few hours later, together with other commits, the
 [CI builds started hanging and timing out after 6 hours](https://github.com/mlangc/more-log4j2/actions/runs/24911662871).
 
-It took me some time to figure out what was going on exactly. Luckily I did not follow some reasonable-sounding, but misleading
-explanations provided by Claude Opus 4.7, since I anyway wanted to find out what was going on for myself.
+It took me some time to figure out exactly what was happening. Luckily I did not follow some reasonable-sounding, but misleading
+explanations provided by Claude Opus 4.7 — I wanted to get to the bottom of it myself anyway.
 
 Here is a brief summary: The problematic test `AsyncHttpAppenderTest#shouldRespectMaxBatchBytesIncludingSeparatorsIfOverloaded`
 added
@@ -206,7 +206,7 @@ found out that I can reproduce the hanging on my laptop by setting
 which restricts the number of threads in
 the [ForkJoinPool#commonPool](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ForkJoinPool.html#commonPool()).
 
-In order to understand what happened and why, a closer look into the 
+To understand what happened and why, a closer look into the
 [implementation of the AsyncHttpAppender](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L64-L64)
 is necessary. I'm trying to keep this as high level as possible, focusing only on the parts relevant for our discussion.
 
@@ -224,8 +224,8 @@ implementation:
 This drawing needs more explanation than the last one, so let's go through it step by step:
 
 1. The `AsyncHttpAppender` limits the number of concurrently executing HTTP requests to `5` by default. This is implemented by a
-   semaphore, that needs to be acquired before invoking the HTTP client. However, the implementation does not call
-   `Semaphore#acquire()`, because that can block. Blocking is anyway something to do very cautiously in this context, since the
+   semaphore, which needs to be acquired before invoking the HTTP client. However, the implementation does not call
+   `Semaphore#acquire()`, because that can block. Blocking is something to do very cautiously in this context anyway, since the
    thread we are running on is shared with the HTTP client. In this case it would be fatal though: Since the semaphore is
    only released after the HTTP client returns, blocking the thread would make sure that this never happens, and we would be
    deadlocked immediately. For that reason the implementation uses
@@ -248,8 +248,8 @@ picture, we need to have a brief look at a surprising detail of the `HttpClient`
 
 #### How and why java.net.http.HttpClient uses the common ForkJoinPool
 
-I already mentioned that the `AsyncHttpAppender` shares an executor with the used `HttpClient`, that is passed into the client 
-at construction time via `HttpClient.Builder#executor`. Therefore, you might be tempted to assume, that the `HttpClient` 
+I already mentioned that the `AsyncHttpAppender` shares an executor with the `HttpClient` it uses, which is passed into the client
+at construction time via `HttpClient.Builder#executor`. Therefore, you might be tempted to assume that the `HttpClient`
 implementation is not using the common `ForkJoinPool` at all. That's at least what I thought - until the aforementioned 
 problem led my attention to `HttpClientImpl#sendAsync`. In [there](https://github.com/openjdk/jdk/blob/6c48f4ed707bf0b15f9b6098de30db8aae6fa40f/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java#L1032)
 you can find
@@ -293,11 +293,11 @@ res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 ```
 
 ensures that the future returned to callers is completed by the common `ForkJoinPool`. This is a defensive measure against users
-of the library that chain heavyweight operations to the returned future, which could starve the executor of the
+of the library who chain heavyweight operations to the returned future, which could starve the executor of the
 `HttpClient`, and severely degrade its functionality.
 
 In my opinion, it would be nice to give users a way to intervene, by allowing them to optionally configure a second executor 
-in addition to `HttpClient.Builder#executor`, that would then be used instead of `ASYNC_POOL`, but that's another topic and 
+in addition to `HttpClient.Builder#executor`, which would then be used instead of `ASYNC_POOL`, but that's another topic and 
 probably best addressed elsewhere.
 
 #### Connecting the Dots
@@ -312,7 +312,7 @@ Math.max(1, Runtime.getRuntime().availableProcessors() - 1)
 ```
 
 on typical consumer hardware. What we are seeing is exactly the kind of executor deadlock I've explained in isolation in the first
-part of this blog post. Since
+part of this blog post. The code below
 
 ```java
 var jobs = IntStream.range(0, 4)
@@ -323,8 +323,8 @@ var jobs = IntStream.range(0, 4)
         })).toArray(CompletableFuture<?>[]::new);
 ```
 
-deliberately overloads the appender that is configured to block if it can't keep up, both threads in the common `ForkJoinPool`,
-that is used by `CompletableFuture#runAsync` if no executor is provided, end up being blocked. At the same time, the previously
+deliberately overloads the appender, which is configured to block when it can't keep up. As a result, both threads in the common
+`ForkJoinPool` — used by `CompletableFuture#runAsync` when no executor is provided — end up being blocked. At the same time, the previously
 discussed semaphore, that limits the number of concurrent HTTP requests, runs out of permits. These permits are never released,
 because their release is chained after
 
