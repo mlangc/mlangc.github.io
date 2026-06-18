@@ -351,12 +351,13 @@ I hope that this discussion gave you a sense of the problem, both in its abstrac
 code. Though it's hard to come up with a simple guideline that will reliably prevent it, here are two recommendations that should
 make it less likely at least:
 
-* The common `ForkJoinPool` is a shared resource, that might be used in unexpected ways. Make sure you don't overload it, and 
+* The common `ForkJoinPool` is a shared resource, which might be used in unexpected ways. Make sure you don't overload it, and 
   use a dedicated executor if in doubt.
-* Avoid synchronously waiting for something that can only be completed by a task in the same, bounded executor. 
+* If you run into this problem, adding threads might be a viable quick fix. Don't stop there, though - address the real issue:
+  synchronously waiting for something that can only be completed by a task in the same bounded executor.
 
-The best remedy though is a profound understanding of the problem, since that will help you both with preventing and debugging 
-in the case this hits you.
+The best remedy, though is a profound understanding of the problem, since that will help you with preventing, debugging and
+properly addressing this issue.
 
 
 
