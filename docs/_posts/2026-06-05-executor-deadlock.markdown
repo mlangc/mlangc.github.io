@@ -349,8 +349,8 @@ to run potentially blocking tasks in another, test-specific executor.
 ### Final Remarks and Recommendations
 
 I hope that this discussion gave you a sense of the problem, both in its abstract form and how it might play out in realistic
-code. Though it's hard to come up with a simple guideline that will reliably prevent it, here are two recommendations that should
-make it less likely at least:
+code. Though it's hard to come up with a simple guideline that will reliably prevent it, here are two recommendations that
+should at least help:
 
 * The common `ForkJoinPool` is a shared resource, which might be used in unexpected ways. Make sure you don't overload it, and 
   use a dedicated executor if in doubt.
