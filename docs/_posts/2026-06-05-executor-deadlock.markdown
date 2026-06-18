@@ -2,7 +2,7 @@
 layout: post
 title: "How to Deadlock a Java ExecutorService"
 date: 2026-06-05
-categories: Java Concurrency
+categories: ["Java", "Concurrency"]
 excerpt: "An in-depth study showing how to (not) deadlock yourself with bounded executors."
 ---
 
