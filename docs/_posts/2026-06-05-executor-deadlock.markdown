@@ -205,6 +205,7 @@ found out that I can reproduce the hanging on my laptop by setting
 
 which restricts the number of threads in
 the [ForkJoinPool#commonPool](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ForkJoinPool.html#commonPool()).
+Defaults that depend on the number of available CPU cores were the reason for the difference in behaviour.
 
 To understand what happened and why, a closer look into the
 [implementation of the AsyncHttpAppender](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L64-L64)
@@ -227,7 +228,7 @@ This drawing needs more explanation than the last one, so let's go through it st
    semaphore, which needs to be acquired before invoking the HTTP client. However, the implementation does not call
    `Semaphore#acquire()`, because that can block. Blocking is something to do very cautiously in this context anyway, since the
    thread we are running on is shared with the HTTP client. In this case it would be fatal though: Since the semaphore is
-   only released after the HTTP client returns, blocking the thread would make sure that this never happens, and we would be
+   only released after the HTTP client returns, blocking the thread would guarantee that this never happens, and we would be
    deadlocked immediately. For that reason the implementation uses
    `Semaphore#tryAcquire()`, which never blocks. If `tryAcquire` fails, the appender 
    [reschedules a drain attempt](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L518-L518)
@@ -338,8 +339,9 @@ which is not executed, since all threads in the common pool are blocked. You can
 *The common ForkJoinPool is busy with logging, which blocks because buffers are full; buffers can't be drained, because that 
 requires a semaphore permit; the semaphore is not released, because the common ForkJoinPool is busy with logging.*
 
-If the number of threads in the common `ForkJoinPool` is greater than 4, the test passes without issues, since then there are
-threads that can pick up the work chained after the completion of the HTTP request, and release the semaphore.
+If the number of threads in the common `ForkJoinPool` is greater than 4 - the number of concurrent logging jobs - the test passes
+without issues, since then there are threads that can pick up the work chained after the completion of the HTTP request, and
+release the semaphore.
 
 To fix the tests, I therefore [adapted them](https://github.com/mlangc/more-log4j2/commit/7057301b1e34abe2a26aaff554a4fb2efb74bfdc)
 to run potentially blocking tasks in another, test-specific executor.
