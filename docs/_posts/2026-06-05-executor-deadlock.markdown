@@ -7,7 +7,7 @@ excerpt: "An in-depth study showing how to (not) deadlock yourself with bounded 
 ---
 
 In this blog post I want to have a close look at a type of deadlock you can run into with any Java
-[ExecutorService](https://docs.oracle.com/en/java/javase/25/docs/api//java.base/java/util/concurrent/ExecutorService.html)
+[ExecutorService](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ExecutorService.html)
 with a bounded number of threads. While rare in practice, the necessary ingredients to trigger it are always at your fingertips,
 especially around the shared
 [ForkJoinPool#commonPool](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/concurrent/ForkJoinPool.html#commonPool()).
@@ -19,10 +19,10 @@ recommendations.
 ### Minimal Reproduction
 
 Let me try to explain the heart of the problem at an abstract level, before showing you how to reproduce it with a few lines of
-code. What you need for a minimal reproduction is a single threaded executor service `executor` and a task `taskS` that is
+code. What you need for a minimal reproduction is a single-threaded executor service `executor` and a task `taskS` that is
 scheduled on `executor`. `taskS` schedules another `taskT` on `executor`, and waits for its completion synchronously. Since
 `executor` has only one thread that is already occupied by `taskS`, `taskT` can never start, and `taskS` therefore waits forever.
-You might find it helpful to have a look at the following diagram, that captures the scenario I've just described:
+You might find it helpful to have a look at the following diagram, which captures the scenario I've just described:
 
 ![executor-deadlock-minimal-reproduction](/assets/drawings/2026-06-05-minimal-reproduction.drawio.png)
 
@@ -48,7 +48,7 @@ potential reason for the program to hang is therefore the last line in `main`, t
 
 If you run this program, you can confirm that it hangs indeed, and all `println` statements are actually dead code.
 
-Before we move on, let's look at two ways to fix the deadlock. The probably most obvious way is to add a thread to the executor,
+Before we move on, let's look at two ways to fix the deadlock. Probably the most obvious way is to add a thread to the executor,
 as in
 
 ```java
@@ -118,7 +118,7 @@ var executor = new Executor() {
 ```
 
 there are still two `Runnable`s being submitted. The first one, implemented by `CompletableFuture.AsyncSupply`, corresponds to the
-first part of `taskS`, that schedules `taskT`. The second one, implemented by `CompletableFuture.AsyncRun` executes
+first part of `taskS`, that schedules `taskT`. The second one, implemented by `CompletableFuture.AsyncRun`, executes
 `taskT`, and then the remaining part of `taskS`. Assembled in a diagram, you can picture what is going on as follows:
 
 ![executor-deadlock-fix-with-async-ops](/assets/drawings/2026-06-05-fix-with-async-ops.drawio.png)
@@ -152,13 +152,13 @@ we can observe at least the following:
 * Many applications use a mixture of asynchronous and synchronous code.
 * Many applications directly or indirectly submit tasks to executors from multiple places.
 
-These points together however are exactly what is needed to run into a real world version of the minimal reproduction above.
+These points together, however, are exactly what is needed to run into a real world version of the minimal reproduction above.
 Unlike in our toy example, `taskS` and `taskT` could originate from different source files, modules or even libraries and the
 affected `executor` could be managed by a framework.
 
 Last but not least: This problem is not limited to `CompletableFuture#join`. A deadlock is possible whenever `taskS` running on a
 bounded `executor` synchronously waits for a `taskT` on the same `executor` to do something. If the synchronous waiting is
-implemented by `CompletableFuture#join`, `CountDownLatch#await`, `Semaphore#acquire` or `BlockingQueue#put` doesn't matter in 
+implemented by `CompletableFuture#join`, `CountDownLatch#await`, `Semaphore#acquire` or `BlockingQueue#put` doesn't matter in
 this context.
 
 ### Case Study of a Real-World Example
@@ -167,13 +167,13 @@ Let me add some depth to the discussion by having a closer look at how I ran int
 working on [more-log4j2](https://github.com/mlangc/more-log4j2). Feel free to jump directly to the [visual summary](#waiting-circle)
 at the end of this section if you like to skip the details.
 
-Back at the end of April 2026, I was addressing bugs pointed out by [Claude Sonnet 4.6](https://www.anthropic.com/news/claude-sonnet-4-6). 
+Back at the end of April 2026, I was addressing bugs pointed out by [Claude Sonnet 4.6](https://www.anthropic.com/news/claude-sonnet-4-6).
 To make sure that I fixed them properly, I
 [added a few tests](https://github.com/mlangc/more-log4j2/commit/7acd211#diff-da6eb56b57edce2e06ec766c3a5d83b19b841f5b615947e52ab710d2e92f0071R1851)
 that all passed locally. However, when I pushed these changes a few hours later, together with other commits, the
 [CI builds started hanging and timing out after 6 hours](https://github.com/mlangc/more-log4j2/actions/runs/24911662871).
 
-It took me some time to figure out what was going on exactly. Luckily I did not follow some reasonable sounding, but misleading
+It took me some time to figure out what was going on exactly. Luckily I did not follow some reasonable-sounding, but misleading
 explanations provided by Claude Opus 4.7, since I anyway wanted to find out what was going on for myself.
 
 Here is a brief summary: The problematic test `AsyncHttpAppenderTest#shouldRespectMaxBatchBytesIncludingSeparatorsIfOverloaded`
@@ -196,7 +196,7 @@ var jobs = IntStream.range(0, 4)
 assertThat(CompletableFuture.allOf(jobs)).succeedsWithin(1, TimeUnit.SECONDS);
 ```
 
-As mentioned, this test passed without issues locally, however it hung completely on the CI server. After some experimentation, I
+As mentioned, this test passed without issues locally; however, it hung completely on the CI server. After some experimentation, I
 found out that I can reproduce the hanging on my laptop by setting
 
 ```
@@ -216,7 +216,7 @@ Let's have a look at what happens in the appender when you call `log.info(x)`:
 ![executor-deadlock-append-x](/assets/drawings/2026-06-05-append-x.drawio.png)
 
 The most important thing about the drawing above is what it doesn't contain: As you can see, the buffer is only appended to, but
-not drained. Draining is done asynchronously by a single threaded executor that is shared with the `HttpAppender`
+not drained. Draining is done asynchronously by a single-threaded executor that is shared with the `HttpAppender`
 implementation:
 
 ![executor-deadlock-drain-buffers](/assets/drawings/2026-06-05-drain-buffers.drawio.png)
@@ -231,9 +231,8 @@ This drawing needs more explanation than the last one, so let's go through it st
    deadlocked immediately. For that reason the implementation uses
    `Semaphore#tryAcquire()`, which never blocks. If `tryAcquire` fails, the appender 
    [reschedules a drain attempt](https://github.com/mlangc/more-log4j2/blob/e65a2bf20e4db7acecd3fd9597765cc693c16858/core/src/main/java/com/github/mlangc/more/log4j2/appenders/AsyncHttpAppender.java#L518-L518)
-   on the executor using an exponential backoff logic, and releases the thread. This is what the 
-   diagram colloquially paraphrases as "
-   async acquire".
+   on the executor using an exponential backoff logic, and releases the thread. This is what the diagram colloquially paraphrases
+   as "async acquire".
 2. Batches that are ready to be sent are kept in a queue, which is polled here. Note that in the actual implementation, the 
    semaphore is only acquired if there is something to poll.
 3. This is the step where `java.net.http.HttpClient#sendAsync` is invoked.
@@ -269,9 +268,9 @@ As hinted by the comment, the sole purpose of
 ```
 res.whenCompleteAsync((r, t) -> { /* do nothing */}, ASYNC_POOL)
 ```
-is to make sure that dependent, non-async completions, are not
+is to make sure that dependent, non-async completions are not
 run on the executor of the `HttpClient`, but on the common `ForkJoinPool`. What are "dependent, non-async completions"? Well,
-completions affecting future returned by 
+completions affecting the future returned by
 * `CompletionStage#thenApply`, 
 * `CompletionStage#thenRun`, 
 * `CompletionStage#thenAccept`,
@@ -356,7 +355,7 @@ make it less likely at least:
 * If you run into this problem, adding threads might be a viable quick fix. Don't stop there, though - address the real issue:
   synchronously waiting for something that can only be completed by a task in the same bounded executor.
 
-The best remedy, though is a profound understanding of the problem, since that will help you with preventing, debugging and
+The best remedy, though, is a profound understanding of the problem, since that will help you with preventing, debugging and
 properly addressing this issue.
 
 
