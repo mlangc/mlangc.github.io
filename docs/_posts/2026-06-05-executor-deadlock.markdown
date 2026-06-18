@@ -182,7 +182,7 @@ with [7acd211491b6ab46b78b4215a9a70d8d7d942eb4](https://github.com/mlangc/more-l
 instantiates a log4j2 configuration that contains an [AsyncHttpAppender](https://github.com/mlangc/more-log4j2#Async-HttpAppender)
 that is configured to 
 * block practically indefinitely via `maxBlockOnOverflowMs=Integer.MAX_VALUE` when it can't keep up with the incoming logs
-* and with an intentionally ridiculously small value for `maxBatchBytes`.
+* use an intentionally ridiculously small value for `maxBatchBytes`.
 
 This appender is then hammered via
 ```java
@@ -251,7 +251,7 @@ picture, we need to have a brief look at a surprising detail of the `HttpClient`
 
 I already mentioned that the `AsyncHttpAppender` shares an executor with the `HttpClient` it uses, which is passed into the client
 at construction time via `HttpClient.Builder#executor`. Therefore, you might be tempted to assume that the `HttpClient`
-implementation is not using the common `ForkJoinPool` at all. That's at least what I thought - until the aforementioned 
+implementation is not using the common `ForkJoinPool` at all. That's at least what I thought — until the aforementioned
 problem led my attention to `HttpClientImpl#sendAsync`. In [there](https://github.com/openjdk/jdk/blob/6c48f4ed707bf0b15f9b6098de30db8aae6fa40f/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java#L1032)
 you can find
 
@@ -326,7 +326,7 @@ var jobs = IntStream.range(0, 4)
 
 deliberately overloads the appender, which is configured to block when it can't keep up. As a result, both threads in the common
 `ForkJoinPool` — used by `CompletableFuture#runAsync` when no executor is provided — end up being blocked. At the same time, the previously
-discussed semaphore, that limits the number of concurrent HTTP requests, runs out of permits. These permits are never released,
+discussed semaphore, which limits the number of concurrent HTTP requests, runs out of permits. These permits are never released,
 because their release is chained after
 
 ```java
@@ -339,7 +339,7 @@ which is not executed, since all threads in the common pool are blocked. You can
 *The common ForkJoinPool is busy with logging, which blocks because buffers are full; buffers can't be drained, because that 
 requires a semaphore permit; the semaphore is not released, because the common ForkJoinPool is busy with logging.*
 
-If the number of threads in the common `ForkJoinPool` is greater than 4 - the number of concurrent logging jobs - the test passes
+If the number of threads in the common `ForkJoinPool` is greater than 4 — the number of concurrent logging jobs — the test passes
 without issues, since then there are threads that can pick up the work chained after the completion of the HTTP request, and
 release the semaphore.
 
@@ -354,7 +354,7 @@ make it less likely at least:
 
 * The common `ForkJoinPool` is a shared resource, which might be used in unexpected ways. Make sure you don't overload it, and 
   use a dedicated executor if in doubt.
-* If you run into this problem, adding threads might be a viable quick fix. Don't stop there, though - address the real issue:
+* If you run into this problem, adding threads might be a viable quick fix. Don't stop there, though — address the real issue:
   synchronously waiting for something that can only be completed by a task in the same bounded executor.
 
 The best remedy, though, is a profound understanding of the problem, since that will help you with preventing, debugging and
