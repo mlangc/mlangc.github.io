@@ -354,10 +354,11 @@ should at least help:
 
 * The common `ForkJoinPool` is a shared resource, which might be used in unexpected ways. Make sure you don't overload it, and 
   use a dedicated executor if in doubt.
-* If you run into this problem, adding threads might be a viable quick fix. Don't stop there, though — address the real issue:
-  synchronously waiting for something that can only be completed by a task in the same bounded executor.
+* If you run into this problem, adding threads might be a viable quick fix. Virtual threads especially are worth considering,
+  because you can create a very high number of them without risking the health of your application. Don't stop there, though —
+  address the real issue: synchronously waiting for something that can only be completed by a task in the same executor.
 
-The best remedy, though, is a profound understanding of the problem, since that will help you with preventing, debugging and
+The best remedy, however, is a profound understanding of the problem, since that will help you with preventing, debugging and
 properly addressing this issue.
 
 
