@@ -87,6 +87,7 @@ clear from here how this generalizes to 3, 4, 5, ... threads.
 
 Luckily, there is another, more reliable way to get rid of the deadlock, without adding threads. The code can be unblocked by
 letting `taskS` wait for `taskT` *asynchronously*, like in this snippet:
+{: #async-fix}
 
 ```java
 void main() {
