@@ -41,6 +41,7 @@ void main() {
     CompletableFuture.runAsync(taskS, executor).join();
 }
 ```
+{: #minimal-reproduction-with-1-thread}
 
 Note that `Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())` is used in favor of
 `Executors.newSingleThreadExecutor()` to make sure that executor threads cannot prevent the program from terminating. The only
@@ -48,7 +49,7 @@ potential reason for the program to hang is therefore the last line in `main`, w
 
 If you run this program, you can confirm that it indeed hangs, and all `println` statements are dead code.
 
-Before we move on, let's look at two ways to fix the deadlock. Probably the most obvious way is to add a thread to the executor,
+Before we move on, let's look at three ways to fix the deadlock. Probably the most obvious way is to add a thread to the executor,
 as in
 
 ```java
@@ -123,6 +124,52 @@ first part of `taskS`, which schedules `taskT`. The second one, implemented by `
 `taskT`, and then the remaining part of `taskS`. Assembled in a diagram, you can picture what is going on as follows:
 
 ![executor-deadlock-fix-with-async-ops](/assets/drawings/2026-06-05-fix-with-async-ops.drawio.png)
+
+Finally, a third way to address this problem is to switch to a virtual-thread executor, like
+`Executors.newVirtualThreadPerTaskExecutor()`. Adding *platform* threads doesn't truly solve it: seemingly unbounded pools like
+`Executors#newCachedThreadPool()` or `Executors#newThreadPerTaskExecutor()` are still subject to resource limits, and exhausting
+them might severely impact the health of your application. Let me illustrate this point with a small example, that can be viewed
+as an especially malicious variation of the
+[minimal reproduction](#minimal-reproduction-with-1-thread) from above — though it exhausts the pool rather than deadlocking:
+{: #vthreads-fix}
+
+```java
+void main() {
+    var executor = Executors.newCachedThreadPool(Thread.ofPlatform().daemon().factory());
+    
+    // How many threads are needed to OOM depends on your environment. 
+    // Bump up this value if you cannot reproduce the issue.
+    var threadsToBlock = 10_000;
+
+    Runnable chainOfDeath = () -> out.println("done");
+    for (int i = 0; i < threadsToBlock; i++) {
+        var chainOfDeathFinal = chainOfDeath;
+        chainOfDeath = () -> CompletableFuture.runAsync(chainOfDeathFinal, executor).join();
+    }
+
+    CompletableFuture.runAsync(chainOfDeath, executor).join();
+}
+```
+
+This creates a chain of futures, each one synchronously waiting for the next one in the chain, which runs on another thread. You
+can picture it like
+
+![malicious-chain](/assets/drawings/2026-06-05-malicious-chain.drawio.png)
+
+If you run this, you'll most likely get something like
+```text
+java.lang.OutOfMemoryError: unable to create native thread: possibly out of memory or process/resource limits reached
+```
+
+However, if you use `Executors.newVirtualThreadPerTaskExecutor()` instead, the program prints `done` and exits immediately, even
+if you limit the virtual threads scheduler to a single platform-thread, by setting 
+```
+-Djdk.virtualThreadScheduler.parallelism=1 -Djdk.virtualThreadScheduler.maxPoolSize=1
+```
+
+One word of caution though: Using virtual threads exposes you to 
+[another class of deadlocks on older JDKs](https://bugs.openjdk.org/browse/JDK-8334304). I would not use them unless 
+you are on a JDK that implements [JEP 491](https://openjdk.org/jeps/491), which means that you need version 24 or later.
 
 ### Implications and Impact in Practice
 
