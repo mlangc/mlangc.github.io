@@ -31,9 +31,13 @@ google_analytics: G-Z829NCMGBB
 # Build settings
 
 #theme: minima
-remote_theme: "jekyll/minima@1e8a445"
+# Pinned to a full commit SHA (not a branch/tag) so the fetched theme content is
+# immutable. Corresponds to jekyll/minima master shortly after v2.5.2 (2025-02-27).
+remote_theme: "jekyll/minima@1e8a445e8fd7280d0fd9d448c0f71c93a2565837"
 plugins:
   - jekyll-remote-theme
+  - jekyll-feed
+  - jekyll-seo-tag
 
 minima:
   show_excerpts: true

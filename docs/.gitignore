@@ -3,4 +3,7 @@ _site
 .jekyll-cache
 .jekyll-metadata
 vendor
-Gemfile.lock
+
+# Gemfile.lock is intentionally committed (see below) so the GitHub Pages
+# Actions build resolves the same gem versions that were tested locally.
+!Gemfile.lock
