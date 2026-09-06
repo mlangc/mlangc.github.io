@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Ruby gems for the Jekyll build (Gemfile / Gemfile.lock live under docs/).
+  - package-ecosystem: bundler
+    directory: /docs
+    schedule:
+      interval: weekly
+    groups:
+      bundler:
+        patterns:
+          - "*"
+
+  # GitHub Actions used by .github/workflows/*.yml — keeps the pinned SHAs current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
