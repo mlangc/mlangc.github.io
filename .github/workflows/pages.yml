@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  # Build-only validation for PRs targeting main (the deploy job is skipped).
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 # Least privilege by default; the deploy job widens this for itself below.
@@ -15,10 +19,11 @@ env:
   # the SHA-256 checksums recorded in Gemfile.lock's CHECKSUMS section.
   BUNDLE_FROZEN: "true"
 
-# Allow one concurrent deployment, don't cancel in-progress production deploys.
+# Per-ref group so PR builds never queue behind a production deploy; superseded
+# PR builds are cancelled, but a running push/deploy on main is never cancelled.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -53,10 +58,16 @@ jobs:
 
   deploy:
     needs: build
+    # Skip on pull_request events — those runs only validate the build.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write      # deploy to GitHub Pages
       id-token: write    # OIDC token for actions/deploy-pages
+    # Serialize actual deployments (GitHub Pages allows only one at a time).
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
