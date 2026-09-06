@@ -42,6 +42,15 @@ plugins:
 minima:
   show_excerpts: true
 
+# The pinned minima theme still uses legacy Sass (`@import`, `lighten()`,
+# `darken()`), which Dart Sass reports as deprecated. We can't patch the remote
+# theme, so silence just those IDs to keep the build output clean.
+sass:
+  silence_deprecations:
+    - import
+    - global-builtin
+    - color-functions
+
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to
