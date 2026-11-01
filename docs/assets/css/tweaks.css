@@ -55,3 +55,7 @@ img[alt=executor-deadlock-waiting-circle] {
     margin: 0 -12px;
     padding: 0 12px;
 }
+
+.screenshot-group { margin: 1.5em 0; padding: 0.75em; border: 1px solid #e8e8e8; border-radius: 4px; }
+.screenshot-group img, .screenshot-group video { display: block; max-width: 100%; height: auto; margin: 0 auto 1.5em; border: 1px solid #c8c8c8; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); }
+.screenshot-group figcaption { font-size: 0.9em; color: #828282; text-align: center; }
