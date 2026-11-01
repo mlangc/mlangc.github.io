@@ -1,0 +1,22 @@
+<script>
+  // Muted videos play once when at least half visible, pause when scrolled out of view
+  // and resume when back. After ending or a manual pause they only play on user request.
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('video').forEach(function (v) {
+      var auto = true;         // may we (re)start this video automatically?
+      var scrollPause = false; // is the pending pause one we triggered ourselves?
+      v.addEventListener('play', function () { auto = true; });
+      // Covers manual pauses and the end of playback (a 'pause' event also fires on end).
+      v.addEventListener('pause', function () { if (!scrollPause) auto = false; scrollPause = false; });
+      new IntersectionObserver(function (entries) {
+        var e = entries[entries.length - 1];
+        if (e.intersectionRatio >= 0.5) {
+          if (auto && v.paused && !v.ended) v.play().catch(function () {});
+        } else if (!e.isIntersecting && !v.paused) {
+          scrollPause = true;
+          v.pause();
+        }
+      }, { threshold: [0, 0.5] }).observe(v);
+    });
+  });
+</script>
