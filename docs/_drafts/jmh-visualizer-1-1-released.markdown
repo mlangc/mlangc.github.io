@@ -8,11 +8,12 @@ excerpt: "A modernized version of JMH Visualizer with benchmark and parameter fi
 I've invested a considerable amount of time into modernizing [JMH Visualizer](https://github.com/mlangc/jmh-visualizer)
 and the related [Gradle plugin](https://github.com/mlangc/gradle-jmh-report).
 
-JMH Visualizer has been my go-to solution for visualizing JMH benchmark results for quite a while. It converts JMH
-result files into interactive charts, and runs entirely in the browser.
+JMH Visualizer has been my go-to solution for visualizing [JMH](https://github.com/openjdk/jmh) benchmark results for
+quite a while. It converts JMH result files into interactive charts, and runs entirely in the browser.
 
-If you are using [JMH](https://github.com/openjdk/jmh) regularly you should definitely have a look. The following
-screenshots from a HashMap related benchmark are meant to make this as easy as possible:
+If you are using JMH regularly you should definitely have a look. The following screenshots from a
+[HashMap related benchmark](https://github.com/mlangc/java-snippets/blob/refs/heads/blog-jmh-visualizer-1-1/src/jmh/java/at/mlangc/benchmarks/HashVsLinkedHashMapBenchmark.java#L15)
+are meant to make this as easy as possible:
 
 <figure markdown="1" class="screenshot-group">
 ![HashMaps Iteration Performance, Operations per Second](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot1-1.png)
