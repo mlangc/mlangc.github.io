@@ -46,17 +46,28 @@ Dependabot PRs rather than manual updates.
 
 ## Blog Post Format
 
-Posts use the naming convention `YYYY-MM-DD-slug.markdown` and require this front matter:
+Published posts live in `docs/_posts/` and use the naming convention
+`YYYY-MM-DD-slug.markdown`, where the date is the publication date. They require this
+front matter:
 
 ```yaml
 ---
 layout: post
 title: "Post Title"
-date: YYYY-MM-DD
 categories: Java Concurrency   # space-separated, no brackets
 excerpt: "One-sentence summary shown on the home page."
 ---
 ```
+
+Unpublished posts live in `docs/_drafts/slug.markdown` (no date; preview with
+`bundle exec jekyll serve --drafts`). To publish, move the file to
+`docs/_posts/YYYY-MM-DD-slug.markdown` using the publication date, and don't set
+`date:` in the front matter. Jekyll lets a front matter `date` override the filename
+date, including in the URL, so omitting it keeps the two from diverging.
+
+Some older posts still have a `date:` in the front matter that differs from the date in
+their filename. For those, the front matter date determines the URL and the displayed
+date. Don't change it, as that would break existing links.
 
 ## Diagrams
 
