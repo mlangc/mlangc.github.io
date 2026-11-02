@@ -1,7 +1,6 @@
 ---
 layout: post
 title: "JMH Visualizer 1.1.0 Released"
-date: 2026-10-13
 categories: [ "Java", "JMH", "Visualization" ]
 excerpt: "A modernized version of JMH Visualizer with benchmark and parameter filtering has been released."
 ---
