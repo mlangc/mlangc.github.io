@@ -16,44 +16,49 @@ If you are using JMH regularly you should definitely have a look. The following 
 are meant to make this as easy as possible:
 
 <figure markdown="1" class="screenshot-group">
-![HashMaps Iteration Performance, Operations per Second](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot1-1.png)
-![HashMaps Iteration Performance, Allocation Rate](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot1-2.png)
+![HashMaps Iteration Performance, Operations per Second](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot1-1.png)
+![HashMaps Iteration Performance, Allocation Rate](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot1-2.png)
 <figcaption>HashMaps iteration performance</figcaption>
 </figure>
 
 <figure markdown="1" class="screenshot-group">
-![HashMaps Get Any Performance, Operations per Second](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot2-1.png)
-![HashMaps Get Any Performance, Allocation Rate](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot2-2.png)
+![HashMaps Get Any Performance, Operations per Second](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot2-1.png)
+![HashMaps Get Any Performance, Allocation Rate](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot2-2.png)
 <figcaption>HashMaps getting any entry performance</figcaption>
 </figure>
 
 <figure markdown="1" class="screenshot-group">
-![HashMaps Put Performance, Operations per Second](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot3-1.png)
-![HashMaps Put Performance, Allocation Rate](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot3-2.png)
+![HashMaps Put Performance, Operations per Second](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot3-1.png)
+![HashMaps Put Performance, Allocation Rate](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot3-2.png)
 <figcaption>HashMaps put performance</figcaption>
 </figure>
 
 <figure markdown="1" class="screenshot-group">
-![Comparing 2 Runs, Summary](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot4-1.png)
-![Comparing 2 Runs, Details](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot4-2.png)
+![Comparing 2 Runs, Summary](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot4-1.png)
+![Comparing 2 Runs, Details](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot4-2.png)
 <figcaption>Comparing runs executed with 1 and 2 threads</figcaption>
 </figure>
 
 <figure markdown="1" class="screenshot-group">
-![Comparing Multiple Runs, Summary](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot5-1.png)
-![Comparing Multiple Runs, Details](/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot5-2.png)
+![Comparing Multiple Runs, Summary](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot5-1.png)
+![Comparing Multiple Runs, Details](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot5-2.png)
 <figcaption>Comparing runs executed with multiple thread counts</figcaption>
 </figure>
 
 Assuming that you use the [jmh-gradle-plugin](https://github.com/melix/jmh-gradle-plugin), just add
 
 ```groovy
+plugins {
+    // Previously published under "io.morethan.jmhreport"
+    id "io.github.mlangc.jmhreport" version "1.1.0"
+}
+
 jmh {
     resultFormat = 'JSON'
 }
 ```
 
-to your `jmh` configuration, run your benchmarks, and open `build/results/jmh/results.json` with
+to your `plugins` and `jmh` configurations, run your benchmarks, and open `build/results/jmh/results.json` with
 [jmh-visualizer](https://mlangc.github.io/jmh-visualizer/). Nothing is uploaded to any server; the tool runs
 exclusively in your browser.
 
@@ -80,17 +85,20 @@ and [here](https://github.com/jzillmann/gradle-jmh-report/issues/15)), I decided
 the [JMH Visualizer browser application](https://mlangc.github.io/jmh-visualizer/), and the
 related [Gradle plugin](https://github.com/mlangc/gradle-jmh-report).
 
-A lot of effort has been put into keeping things exactly as they were from the outside, while not making any compromises
-on modernizing the underlying software stack.
+A lot of effort has been put
+into [keeping things exactly as they were](https://github.com/mlangc/jmh-visualizer/tree/04c18c2a8f521a07041cffa87a96db004b848113/e2e)
+from the outside, while not making any compromises
+on [modernizing the underlying software stack](https://github.com/mlangc/jmh-visualizer/blob/04c18c2a8f521a07041cffa87a96db004b848113/package.json#L42).
 
 There is only one extension that I've added to the previously existing functionality: You can now conveniently select
 subsets of benchmark methods and parameters. This is helpful when loading large result files containing many different
 benchmark-parameter combinations, like in this screencast:
 
 <figure markdown="1" class="screenshot-group">
-<video muted playsinline controls preload="metadata" poster="/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot6-poster.jpg">
-<source src="/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot6.mp4" type="video/mp4"/>
-Your browser can't play this video; you can <a href="/assets/img/2026-10-13-jmh-visualizer-1-1-screenshot6.mp4">download it</a> instead.
+<video muted playsinline controls preload="metadata" 
+poster="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1-poster.jpg">
+<source src="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1.mp4" type="video/mp4"/>
+Your browser can't play this video; you can <a href="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1.mp4">download it</a> instead.
 </video>
 <figcaption>HashMaps benchmarks, focusing on merge and specific parameters</figcaption>
 </figure>

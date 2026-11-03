@@ -13,6 +13,8 @@ All Jekyll source lives under `docs/`. The repository root contains `README.md`,
 - `docs/_posts/` — blog posts in Markdown with `.markdown` extension
 - `docs/assets/drawings/` — diagrams as `.drawio` source files with pre-exported `.drawio.png` companions
 - `docs/assets/img/` — benchmark screenshots and other images
+- `docs/assets/clips/` — web-ready screencasts (`.mp4`) and their poster images, embedded via `<video>`
+- `source-media/` — original media (e.g. `.mov` recordings) kept for re-encoding; outside `docs/`, so never deployed
 - `docs/_config.yml` — Jekyll configuration (theme, plugins, site metadata)
 - `docs/Gemfile.lock` — committed; carries a `CHECKSUMS` section so CI resolves the exact gem versions tested locally
 - `docs/_site/` — generated output, not committed (gitignored)
