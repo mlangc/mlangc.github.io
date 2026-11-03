@@ -48,17 +48,12 @@ are meant to make this as easy as possible:
 Assuming that you use the [jmh-gradle-plugin](https://github.com/melix/jmh-gradle-plugin), just add
 
 ```groovy
-plugins {
-    // Previously published under "io.morethan.jmhreport"
-    id "io.github.mlangc.jmhreport" version "1.1.0"
-}
-
 jmh {
     resultFormat = 'JSON'
 }
 ```
 
-to your `plugins` and `jmh` configurations, run your benchmarks, and open `build/results/jmh/results.json` with
+to your `jmh` configuration, run your benchmarks, and open `build/results/jmh/results.json` with
 [jmh-visualizer](https://mlangc.github.io/jmh-visualizer/). Nothing is uploaded to any server; the tool runs
 exclusively in your browser.
 
@@ -66,6 +61,11 @@ Additionally, you can use the [jmh-report plugin](https://github.com/mlangc/grad
 automatically render a report whenever you run the `jmh` task:
 
 ```groovy
+plugins {
+    // Previously published under "io.morethan.jmhreport"
+    id "io.github.mlangc.jmhreport" version "1.1.0"
+}
+
 jmhReport {
     // This is where the jmh-gradle plugin puts its result files by default
     jmhResultPath = "build/results/jmh/results.json"
@@ -95,7 +95,7 @@ subsets of benchmark methods and parameters. This is helpful when loading large 
 benchmark-parameter combinations, like in this screencast:
 
 <figure markdown="1" class="screenshot-group">
-<video muted playsinline controls preload="metadata" 
+<video muted playsinline controls preload="metadata"
 poster="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1-poster.jpg">
 <source src="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1.mp4" type="video/mp4"/>
 Your browser can't play this video; you can <a href="/assets/clips/2026-11-03-jmh-visualizer-1-1-clip1.mp4">download it</a> instead.
