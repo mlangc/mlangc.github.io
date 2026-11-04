@@ -38,7 +38,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@651ff0d62c5c79bed6d53ec518387aae20e72c1a # v1.329.0
         with:
-          ruby-version: "3.4"
+          ruby-version: "4.0"
           bundler-cache: true
           working-directory: docs
 
@@ -58,8 +58,11 @@ jobs:
 
   deploy:
     needs: build
-    # Skip on pull_request events — those runs only validate the build.
-    if: github.event_name != 'pull_request'
+    # Deploy only from main: pushes, or manual dispatches on main. Pull requests
+    # and dispatches on other branches only validate the build.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write      # deploy to GitHub Pages
