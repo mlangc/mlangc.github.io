@@ -3,6 +3,7 @@ layout: post
 title: "JMH Visualizer 1.1.0 Released"
 categories: [ "Java", "JMH", "Visualization" ]
 excerpt: "A modernized version of JMH Visualizer with benchmark and parameter filtering has been released."
+image: /assets/img/2026-11-03-jmh-visualizer-1-1-screenshot2-1.png
 ---
 
 I've invested a considerable amount of time into modernizing [JMH Visualizer](https://github.com/mlangc/jmh-visualizer)
