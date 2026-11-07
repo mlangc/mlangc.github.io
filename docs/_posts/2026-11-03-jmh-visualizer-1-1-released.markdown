@@ -34,7 +34,7 @@ are meant to make this as easy as possible:
 <figcaption>HashMaps put performance</figcaption>
 </figure>
 
-<figure markdown="1" class="screenshot-group">
+<figure id="comparing-two-runs" markdown="1" class="screenshot-group">
 ![Comparing 2 Runs, Summary](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot4-1.png)
 ![Comparing 2 Runs, Details](/assets/img/2026-11-03-jmh-visualizer-1-1-screenshot4-2.png)
 <figcaption>Comparing runs executed with 1 and 2 threads</figcaption>
